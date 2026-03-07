@@ -13,11 +13,13 @@ App desktop **Electron** de investigação jornalística (OSINT) que usa LLMs de
 
 - **Runtime:** Node.js (Electron)
 - **Build:** electron-vite, electron-builder
-- **Frontend:** React, TypeScript strict, Tailwind, shadcn/ui, Zustand
+- **Frontend:** React, TypeScript strict, Tailwind, shadcn/ui, shadcnblocks (Pro), Zustand
+- **Layout base:** Application Shell 9 (shadcnblocks) — IDE-style com Activity Bar + File Explorer
 - **Backend (main):** better-sqlite3, Kysely, chokidar, electron-store
 - **AI:** OpenRouter (OpenAI SDK), Zod (schemas IPC)
 - **Fontes:** IBM Plex Sans Thai, Mono, Sans JP
 - **Tema:** Capybara 0 (OKLCH), border-radius 0rem
+- **MCP:** shadcn MCP server para busca e instalação de componentes via Cursor
 
 ## Domínios (5)
 
@@ -47,6 +49,13 @@ src/
 - `investigations/` — linhas investigativas e clues
 
 Dados editoriais em **Markdown**; **SQLite** como índice.
+
+## shadcnblocks (componentes estendidos)
+
+- Assinatura **Pro** ativa — acesso a todos os blocos premium.
+- Registry configurado em `components.json` (`@shadcnblocks`).
+- **Application Shell 9** é a base do layout (Activity Bar + File Explorer Sidebar + Panels).
+- **Regra:** Antes de implementar qualquer componente UI do zero, buscar primeiro no shadcn/ui oficial e no shadcnblocks via MCP ou CLI.
 
 ## Referência
 

@@ -8,14 +8,24 @@ alwaysApply: true
 ## Ciclo de desenvolvimento
 
 ```
-plan-feature → execute-plan → commit → post-commit-tests → run-tests
+plan-feature → busca-componentes → execute-plan → commit → post-commit-tests → run-tests
 ```
 
 - **plan-feature** gera plano em `.agents/plans/` (não escreve código).
+- **busca-componentes** — para tarefas de UI, buscar no shadcn/ui e shadcnblocks se já existe componente/bloco pronto antes de implementar.
 - **execute-plan** implementa tarefas do plano e valida (VALIDATE por tarefa, VALIDATION COMMANDS ao final).
 - **commit** faz commit atômico com tag (feat/fix/refactor/test/docs/chore/style).
 - **post-commit-tests** analisa o commit, gera/atualiza testes e registra em `.agents/test-registry.md`.
 - **run-tests** roda a suíte (all ou last) conforme o registro.
+
+## Busca de componentes UI (obrigatório)
+
+Antes de implementar qualquer componente de UI, buscar nos registries:
+
+1. **shadcn/ui oficial** — primitivos e componentes base
+2. **shadcnblocks** (Pro) — 500+ blocos prontos (shells, sidebars, forms, tables, etc.)
+
+Usar o **shadcn MCP** no Cursor para busca por linguagem natural ou a CLI (`pnpm dlx shadcn@latest add @shadcnblocks/[nome]`).
 
 ## Skills e quando usar
 

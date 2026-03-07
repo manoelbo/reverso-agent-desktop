@@ -18,36 +18,64 @@ Os domínios anteriores (PRD-01 a PRD-04) cobrem **o que** o sistema faz. Este P
 
 ## 2. Referências de Design
 
-O Capybara Agent é inspirado em 4 referências:
+O Capybara Agent é inspirado em 5 referências:
 
 | Referência | O que inspira |
 |---|---|
-| **Obsidian** | Sidebar file tree, Graph View, Markdown viewer read-only |
+| **VS Code / Application Shell 9** | Activity bar + file explorer sidebar, padrão IDE com múltiplos painéis, dark-friendly |
+| **Obsidian** | Graph View, Markdown viewer read-only, [[backlinks]] |
 | **Notion** | Navegação single-page (sem abas), organização de workspace |
 | **Cursor / Claude Code** | Chat always-present, agent feedback real-time, streaming, action pills |
 | **Mintlify / Docusaurus** | Rendering limpo de Markdown longo, TOC, backlinks |
+
+### 2.1 Base Estrutural: shadcnblocks Application Shell 9
+
+O layout master é construído sobre o bloco **Application Shell 9** ("IDE-Style File Explorer Shell") do shadcnblocks. Este bloco fornece:
+
+- **Activity Bar** — barra vertical estreita na extrema esquerda com ícones de módulo
+- **File Explorer Sidebar** — painel colapsável com árvore de arquivos, badges e ações
+- **Panel Toggle** — controle de painéis secundários via header
+- **Scroll areas** — gerenciamento de scroll em árvores longas
+- **Dark mode nativo** — design dark-friendly com highlights em seleção
+
+O Capybara Agent adapta esse shell adicionando o **Chat Panel** como terceira zona persistente à direita.
 
 ---
 
 ## 3. Master Layout
 
-O app é dividido em **3 zonas persistentes**:
+O app é dividido em **4 zonas**, sendo 3 persistentes + Activity Bar:
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│ [Sidebar]  │            [Viewer Area]                    │  [Chat]  │
-│ collapsible│  Single page view (Notion-style)             │  fixed   │
-│  ~260px    │  flex (grows/shrinks)                        │  ~380px  │
-│            │  + floating Graph View (bottom-right)        │expandable│
-└──────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│[Act.]│ [Sidebar]  │            [Viewer Area]                │  [Chat]  │
+│ Bar  │ collapsible│  Single page view (Notion-style)         │  fixed   │
+│~48px │  ~260px    │  flex (grows/shrinks)                    │  ~380px  │
+│      │            │  + floating Graph View (bottom-right)    │expandable│
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.1 Sidebar (esquerda)
+### 3.0 Activity Bar (extrema esquerda)
+
+Baseada no Application Shell 9. Barra vertical estreita (~48px) com ícones de módulo:
+
+| Ícone | Módulo | Ação |
+|---|---|---|
+| 📁 | Explorer | Abre sidebar com file tree (Sources + Dossier + Investigations) |
+| 🔍 | Search | Abre sidebar com busca full-text |
+| 🕸️ | Graph | Abre Graph View fullscreen no viewer |
+| ⚙️ | Settings | Abre Settings no viewer |
+
+- Ícone ativo recebe highlight visual
+- Activity Bar é **sempre visível** (não colapsável)
+- Padrão familiar de IDEs (VS Code, Cursor)
+
+### 3.1 Sidebar (esquerda, ao lado da Activity Bar)
 
 - Largura default: ~260px
 - Colapsável via `Cmd+B` ou ícone hamburger
-- Quando colapsada, Viewer + Chat ocupam toda a largura
-- Conteúdo: file tree, drop zone, processing status, graph view link
+- Quando colapsada, Activity Bar permanece visível; Viewer + Chat ocupam o restante
+- Conteúdo muda conforme módulo selecionado na Activity Bar (Explorer, Search, etc.)
 
 ### 3.2 Viewer Area (centro)
 
@@ -683,11 +711,46 @@ No MVP, `→[source]` links abrem o arquivo original no app padrão do sistema (
 
 ---
 
-## 17. Dependências Específicas deste Domínio
+## 17. shadcnblocks — Componentes Estendidos
 
-Este domínio não adiciona dependências novas. Toda a UI é construída com:
+### Registry Configurado
+
+O projeto utiliza o **shadcnblocks** (assinatura Pro) como registry estendido do shadcn/ui, configurado em `components.json`:
+
+```json
+{
+  "registries": {
+    "@shadcnblocks": "https://shadcnblocks.com/r/{name}"
+  }
+}
+```
+
+### Blocos Utilizados
+
+| Bloco | ID | Uso no projeto |
+|---|---|---|
+| **Application Shell 9** | `application-shell9` | Base do layout master (Activity Bar + File Explorer + Panels) |
+
+### Processo de Busca (obrigatório)
+
+Antes de criar qualquer componente de UI do zero, **sempre** buscar nos registries:
+
+1. **shadcn/ui oficial** — primitivos e componentes base
+2. **shadcnblocks** — blocos prontos (shells, sidebars, tables, forms, etc.)
+
+A busca pode ser feita via:
+- **shadcn MCP** (linguagem natural no Cursor): "find file tree components in shadcnblocks"
+- **CLI**: `pnpm dlx shadcn@latest add @shadcnblocks/[nome-do-bloco]`
+- **Site**: https://www.shadcnblocks.com/blocks
+
+---
+
+## 18. Dependências Específicas deste Domínio
+
+As dependências de UI incluem o shadcnblocks como fonte de blocos:
 
 - `shadcn/ui` + Tailwind (PRD-01)
+- `shadcnblocks` Pro — Application Shell 9 e outros blocos conforme necessário
 - `react-force-graph-2d` (PRD-03)
 - `react-mentions` (PRD-04)
 - `cmdk` (PRD-04)

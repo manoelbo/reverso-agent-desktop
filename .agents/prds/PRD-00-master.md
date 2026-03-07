@@ -159,7 +159,9 @@ O Capybara Agent é dividido em **5 domínios** que se interconectam:
 | Framework desktop | Electron.js | ✅ Decidido |
 | UI framework | React | ✅ Decidido (via shadcn/ui) |
 | CSS | Tailwind CSS | ✅ Decidido (via shadcn/ui) |
-| Componentes | shadcn/ui | ✅ Decidido |
+| Componentes | shadcn/ui + shadcnblocks (Pro) | ✅ Decidido |
+| Blocos estendidos | shadcnblocks.com (assinatura Pro) | ✅ Decidido |
+| Application Shell | Application Shell 9 (IDE-Style File Explorer) | ✅ Decidido |
 | Tema | Capybara 0 (tweakcn) | ✅ Decidido |
 | Fontes | IBM Plex Sans Thai, Mono, Sans JP | ✅ Decidido |
 | AI gateway | OpenRouter (v0.1) | ✅ Decidido |
@@ -315,6 +317,71 @@ Motivo: Sessões de chat com milhares de mensagens, token counts, timestamps —
 
 ---
 
+## 6bis. shadcnblocks — Biblioteca Estendida de Componentes
+
+### O que é
+
+O **shadcnblocks** (shadcnblocks.com) é uma biblioteca estendida com 500+ blocos e componentes production-ready compatíveis com shadcn/ui. O projeto possui assinatura **Pro**, dando acesso a todos os blocos premium.
+
+### Application Shell 9 — Base do Layout
+
+O bloco **Application Shell 9** ("IDE-Style File Explorer Shell") é a base estrutural do app. Ele implementa:
+
+- **Activity Bar** (barra lateral esquerda estreita) — ícones de módulos (Sources, Investigations, Dossier, Graph, Settings)
+- **File Explorer Sidebar** — árvore de arquivos colapsável com pastas, badges de contagem e botão de ações
+- **Panel Toggle** — controle de painéis secundários (chat, graph)
+- **Dark-friendly design** — tema escuro nativo
+
+Esse padrão replica o layout do VS Code, que é ideal para o Capybara Agent por ser um app de gerenciamento de arquivos/documentos com múltiplos painéis.
+
+**Dependências do bloco:** `button`, `collapsible`, `drawer`, `scroll-area`, `sidebar` (shadcn/ui) + `lucide-react`.
+
+### Configuração do Registry
+
+Em `components.json`, o shadcnblocks é configurado como registry adicional:
+
+```json
+{
+  "registries": {
+    "@shadcnblocks": "https://shadcnblocks.com/r/{name}"
+  }
+}
+```
+
+### shadcn MCP Server
+
+O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de coding possa buscar, listar e instalar componentes via linguagem natural. Configurado em `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    }
+  }
+}
+```
+
+### Processo Obrigatório: Busca de Componentes
+
+> **Regra:** Antes de implementar qualquer componente de UI, o agente **DEVE** buscar nos registries do shadcn/ui oficial e do shadcnblocks se já existe um componente ou bloco pronto que atenda à necessidade.
+
+**Fluxo:**
+
+1. Identificar a necessidade de UI (ex: "precisamos de um sidebar com file tree")
+2. Buscar no shadcn/ui oficial (`shadcn@latest` CLI ou MCP)
+3. Buscar no shadcnblocks (`@shadcnblocks` registry)
+4. Se existe bloco pronto → instalar e adaptar
+5. Se não existe → implementar do zero usando primitivos do shadcn/ui
+
+**Exemplos de busca via MCP:**
+- "Show me application shell blocks from shadcnblocks"
+- "Find sidebar components in shadcn"
+- "List file explorer blocks from shadcnblocks"
+
+---
+
 ## 7. Arquitetura de Alto Nível
 
 ```
@@ -371,10 +438,13 @@ Motivo: Sessões de chat com milhares de mensagens, token counts, timestamps —
 **Objetivo:** App Electron funcional com layout completo e infraestrutura base.
 
 - ✅ Setup electron-vite + React + TypeScript + Tailwind
-- ✅ Tema Capybara 0 (shadcn/ui + tweakcn)
+- ✅ Configurar shadcn/ui (`pnpm dlx shadcn@latest init`)
+- ✅ Configurar shadcnblocks como registry estendido em `components.json`
+- ✅ Instalar tema Capybara 0 (`pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmmfid9kr000104jufj121z63`)
+- ✅ Instalar Application Shell 9 (`@shadcnblocks/application-shell9`) como base do layout
 - ✅ Fontes IBM Plex bundled
 - ✅ Frameless window com drag regions (macOS traffic lights)
-- ✅ Layout master (Sidebar + Viewer + Chat)
+- ✅ Layout master baseado no Application Shell 9 (Activity Bar + File Explorer Sidebar + Viewer + Chat)
 - ✅ IPC tipado com Zod (shared/ipc-schema.ts)
 - ✅ better-sqlite3 + Kysely (schema base: sources, entities, backlinks)
 - ✅ File system manager (workspace CRUD + chokidar watcher)

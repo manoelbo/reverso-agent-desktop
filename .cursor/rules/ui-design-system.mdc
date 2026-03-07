@@ -1,5 +1,5 @@
 ---
-description: Design system — shadcn/ui, tema Capybara 0, IBM Plex, OKLCH, frameless drag regions
+description: Design system — shadcn/ui, shadcnblocks, tema Capybara 0, IBM Plex, OKLCH, frameless drag regions
 globs: "src/renderer/components/**"
 alwaysApply: false
 ---
@@ -9,10 +9,23 @@ alwaysApply: false
 ## Base
 
 - **shadcn/ui** como Tier 1 (primitivos); componentes de produto como Tier 2 em `components/app/`.
+- **shadcnblocks** (Pro) como fonte de blocos estendidos — shells, sidebars, tables, forms, etc.
+- **Application Shell 9** — base do layout master (Activity Bar + File Explorer + Panels).
 - **Tema Capybara 0** via tweakcn; tokens em OKLCH para light/dark.
 - **Fontes:** IBM Plex Sans Thai (body), IBM Plex Mono (code), IBM Plex Sans JP (fallback).
 - **Border radius:** 0rem (cantos retos).
 - **Cores:** Nunca hardcoded; usar variáveis CSS do tema (OKLCH).
+
+## Busca de componentes (obrigatório)
+
+Antes de implementar qualquer componente de UI do zero:
+
+1. **Buscar no shadcn/ui** — primitivos e componentes oficiais.
+2. **Buscar no shadcnblocks** — blocos prontos via MCP ou CLI (`@shadcnblocks/[nome]`).
+3. Se existe bloco pronto → **instalar e adaptar** ao tema Capybara 0.
+4. Se não existe → implementar usando primitivos do shadcn/ui.
+
+Usar o **shadcn MCP** no Cursor para busca por linguagem natural (ex: "find sidebar blocks from shadcnblocks").
 
 ## Janela frameless
 
@@ -26,8 +39,28 @@ alwaysApply: false
 ## Organização
 
 - **components/ui/** — Componentes shadcn (button, dialog, dropdown-menu, input, tabs, sidebar, ScrollArea, etc.).
+- **components/blocks/** — Blocos instalados do shadcnblocks (application-shell9, etc.).
 - **components/app/** — Componentes específicos do produto (ex.: SourceCard, DossierTree, ChatPanel, GraphWidget).
+
+## Setup inicial
+
+```bash
+# 1. Inicializar shadcn/ui
+pnpm dlx shadcn@latest init
+
+# 2. Instalar tema Capybara 0
+pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmmfid9kr000104jufj121z63
+
+# 3. Configurar shadcnblocks registry em components.json
+# Adicionar: "registries": { "@shadcnblocks": "https://shadcnblocks.com/r/{name}" }
+
+# 4. Instalar Application Shell 9
+pnpm dlx shadcn@latest add @shadcnblocks/application-shell9
+```
 
 ## Referência
 
-- Instalação do tema: `pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/...` (ver `.agents/capybara_agent_project.md` ou PRD-05).
+- Tema Capybara 0: https://tweakcn.com/themes/cmmfid9kr000104jufj121z63
+- shadcnblocks: https://www.shadcnblocks.com/blocks
+- shadcn MCP: configurado em `.cursor/mcp.json`
+- PRDs: `.agents/prds/PRD-05-ui-interaction-screens.md`
