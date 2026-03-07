@@ -940,7 +940,7 @@ Complete list of all screens and states in the application:
 
 | # | Screen / State | Description |
 | --- | --- | --- |
-| 1 | **Onboarding** | Create Investigation Desk + paste OpenRouter API Key + choose theme (Latte/Frappé) |
+| 1 | **Onboarding** | Create Investigation Desk + paste OpenRouter API Key  |
 | 2 | **Sources (list view)** | Dropzone + file list with status badges + checkboxes + processing buttons |
 | 3 | **Source (detail view)** | [preview.md](http://preview.md)  • [metadata.md](http://metadata.md) rendered + link to original + processing status |
 | 4 | **Source (replica view)** | [replica.md](http://replica.md) rendered for PDFs, with table of contents |
