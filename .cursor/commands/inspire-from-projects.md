@@ -11,7 +11,7 @@ Acionar a funcionalidade de **Inspiration**: pesquisar nos projetos de referênc
 
 ## Instrução para o agente
 
-1. Consulte a **Cursor rule** `capybara-agent-inspiration.mdc` para o manifesto de projetos e critérios de decisão.
+1. Consulte a **Cursor rule** `reverso-agent-inspiration.mdc` para o manifesto de projetos e critérios de decisão.
 2. Siga a **skill** `.cursor/skills/inspiration-research/SKILL.md`: use o tópico abaixo como entrada, dispare os subagentes **explore** (em paralelo) e o subagente **generalPurpose** (decisor), e apresente **apenas** a recomendação final ao usuário (1–2 parágrafos).
 
 ## Tópico para inspirar

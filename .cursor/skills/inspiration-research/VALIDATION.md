@@ -16,7 +16,7 @@ Este documento descreve como validar o fluxo completo da funcionalidade **Inspir
    - **Chat:** Escrever: "Vamos nos inspirar nos projetos em Inspirations para [tópico]". Exemplo: "Vamos nos inspirar nos projetos em Inspirations para edição de trechos de arquivo pelo agente."
 
 3. **Verificar que o agente:**
-   - Considera a rule `capybara-agent-inspiration.mdc` (manifesto e critérios).
+   - Considera a rule `reverso-agent-inspiration.mdc` (manifesto e critérios).
    - Invoca a skill `inspiration-research`.
    - Dispara subagentes **explore** em paralelo (um por projeto existente em `.agents/inspirations/`).
    - Agrega os resumos e dispara um subagente **generalPurpose** (decisor).

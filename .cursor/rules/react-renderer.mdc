@@ -33,4 +33,4 @@ alwaysApply: false
 
 ## Estilo
 
-- Tema e componentes de UI conforme rule `ui-design-system.mdc`; Markdown conforme `capybara-markdown.mdc`.
+- Tema e componentes de UI conforme rule `ui-design-system.mdc`; Markdown conforme `reverso-markdown.mdc`.

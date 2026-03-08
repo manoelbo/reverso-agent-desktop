@@ -1,4 +1,4 @@
-# capybara-agent-tmp
+# reverso-agent-tmp
 
 An Electron application with React and TypeScript
 

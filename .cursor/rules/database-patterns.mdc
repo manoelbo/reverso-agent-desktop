@@ -13,7 +13,7 @@ alwaysApply: false
 
 ## Localização
 
-- DB por workspace: `~/CapybaraWorkspaces/{nome}/.capybara/data.db`.
+- DB por workspace: `~/ReversoWorkspaces/{nome}/.reverso/data.db`.
 - Abrir/fechar conexão conforme workspace ativo; não manter DB global único para múltiplos workspaces simultâneos sem necessidade.
 
 ## Tabelas principais

@@ -9,7 +9,7 @@ alwaysApply: false
 ## Gateway
 
 - **OpenRouter** via OpenAI SDK: `baseURL: 'https://openrouter.ai/api/v1'`.
-- API key e seleção de modelos em `.capybara/config.json` (por workspace).
+- API key e seleção de modelos em `.reverso/config.json` (por workspace).
 
 ## Model slots (3)
 

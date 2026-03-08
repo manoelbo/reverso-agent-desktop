@@ -16,7 +16,7 @@ description: Pesquisar nos projetos em .agents/inspirations/ para inspirar a pr�
 
 ## Manifesto
 
-Consultar a **Cursor rule** `capybara-agent-inspiration.mdc` para obter a lista de projetos e papéis. Não usar arquivo separado de manifesto.
+Consultar a **Cursor rule** `reverso-agent-inspiration.mdc` para obter a lista de projetos e papéis. Não usar arquivo separado de manifesto.
 
 Projetos esperados em `.agents/inspirations/`: `open-cowork`, `Trilium`, `aider`, `learn-claude-code`, `opencode`. Se uma pasta não existir, pule-a.
 
@@ -61,7 +61,7 @@ Responda em 3–5 frases: o que esse projeto faz de relevante para esse tópico 
 ### Para o decisor (generalPurpose)
 
 ```
-Você é o decisor de inspiração do projeto Capybara Agent. Receba os resumos abaixo de pesquisas feitas em projetos de referência e o tópico original. Com base nos critérios de decisão fornecidos, recomende qual(is) projeto(s) o time deve seguir para esse tópico e por quê.
+Você é o decisor de inspiração do projeto Reverso Agent. Receba os resumos abaixo de pesquisas feitas em projetos de referência e o tópico original. Com base nos critérios de decisão fornecidos, recomende qual(is) projeto(s) o time deve seguir para esse tópico e por quê.
 
 Tópico original: "[TÓPICO]"
 
@@ -101,7 +101,7 @@ Para testar o fluxo, siga o passo a passo em **VALIDATION.md** (neste diretório
 1. Iniciar uma sessão de brainstorm (ex.: "Quero decidir como implementar a ferramenta editFile do agente").
 2. Pedir explicitamente: "Vamos nos inspirar nos projetos em Inspirations para [tópico]" (ex.: "para edição de trechos de arquivo").
 3. Verificar que o agente:
-   - Considera a rule `capybara-agent-inspiration.mdc` e a skill.
+   - Considera a rule `reverso-agent-inspiration.mdc` e a skill.
    - Dispara subagentes **explore** em paralelo para cada projeto existente em `.agents/inspirations/`.
    - Agrega os resumos e dispara um subagente **generalPurpose** (decisor).
    - Apresenta **apenas** a recomendação final (1–2 parágrafos) ao usuário, sem colar todos os resumos no chat.

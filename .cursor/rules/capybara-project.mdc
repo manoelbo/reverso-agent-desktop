@@ -1,9 +1,9 @@
 ---
-description: Visão geral do Capybara Agent — o que é, stack, arquitetura e estrutura de pastas
+description: Visão geral do Reverso Agent — o que é, stack, arquitetura e estrutura de pastas
 alwaysApply: true
 ---
 
-# Capybara Agent — Projeto
+# Reverso Agent — Projeto
 
 ## O que é
 
@@ -18,7 +18,7 @@ App desktop **Electron** de investigação jornalística (OSINT) que usa LLMs de
 - **Backend (main):** better-sqlite3, Kysely, chokidar, electron-store
 - **AI:** OpenRouter (OpenAI SDK), Zod (schemas IPC)
 - **Fontes:** IBM Plex Sans Thai, Mono, Sans JP
-- **Tema:** Capybara 0 (OKLCH), border-radius 0rem
+- **Tema:** Reverso 0 (OKLCH), border-radius 0rem
 - **MCP:** shadcn MCP server para busca e instalação de componentes via Cursor
 
 ## Domínios (5)
@@ -26,7 +26,7 @@ App desktop **Electron** de investigação jornalística (OSINT) que usa LLMs de
 1. **Workspace / Infra / AI** — Electron, IPC, storage, OpenRouter, model routing
 2. **Sources** — Ingestão, PDF→MD, metadata, preview, replica
 3. **Dossier** — Entidades, annotations, clues, investigações, graph
-4. **Chat / Agent** — Chat UI, agent loop, tools, Capybara Markdown
+4. **Chat / Agent** — Chat UI, agent loop, tools, Reverso Markdown
 5. **UI** — Layout, sidebar, viewer, Chat-First Principle, atalhos
 
 ## Estrutura de pastas (src/)
@@ -41,9 +41,9 @@ src/
 
 ## Workspace no disco
 
-`~/CapybaraWorkspaces/{nome}/` contém:
+`~/ReversoWorkspaces/{nome}/` contém:
 
-- `.capybara/` — config.json, data.db
+- `.reverso/` — config.json, data.db
 - `sources/` — documentos importados e artefatos (preview.md, metadata.md, replica.md)
 - `dossier/` — entidades e Markdown do dossiê
 - `investigations/` — linhas investigativas e clues

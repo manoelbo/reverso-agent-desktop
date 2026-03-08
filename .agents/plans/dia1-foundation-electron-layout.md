@@ -6,13 +6,13 @@ Pay special attention to naming of existing utils, types and models. Import from
 
 ## Feature Description
 
-Após o setup manual (guia em `.agents/guides/dia1-setup-electron-vite-react-tailwind-shadcn.md`), esta feature configura a **frameless window** do Electron com macOS traffic lights e implementa o **layout master** baseado no Application Shell 9 do shadcnblocks, adaptado para as 4 zonas do Capybara Agent: Activity Bar + File Explorer Sidebar + Viewer Area + Chat Panel.
+Após o setup manual (guia em `.agents/guides/dia1-setup-electron-vite-react-tailwind-shadcn.md`), esta feature configura a **frameless window** do Electron com macOS traffic lights e implementa o **layout master** baseado no Application Shell 9 do shadcnblocks, adaptado para as 4 zonas do Reverso Agent: Activity Bar + File Explorer Sidebar + Viewer Area + Chat Panel.
 
 O objetivo é ter uma **estrutura base visual validável** — o app Electron abre com frameless window, traffic lights, drag region, e o layout IDE-style com as 4 zonas renderizadas (mesmo que com conteúdo placeholder).
 
 ## User Story
 
-As a journalist using Capybara Agent
+As a journalist using Reverso Agent
 I want a native-feeling macOS app with an IDE-style layout
 So that I can navigate between sources, viewer, and chat in a familiar, efficient interface
 
@@ -24,7 +24,7 @@ O projeto precisa de uma base visual que permita validar o layout e a estrutura 
 
 1. Configurar `BrowserWindow` como frameless com `titleBarStyle: 'hiddenInset'` e traffic light position customizada
 2. Instalar o bloco Application Shell 9 via shadcnblocks CLI
-3. Adaptar o shell para as 4 zonas do Capybara (Activity Bar, Sidebar, Viewer, Chat)
+3. Adaptar o shell para as 4 zonas do Reverso (Activity Bar, Sidebar, Viewer, Chat)
 4. Adicionar drag region via CSS (`-webkit-app-region: drag`) no header
 5. Aplicar dark mode como default e configurar classe `.dark` no HTML
 
@@ -93,7 +93,7 @@ O projeto precisa de uma base visual que permita validar o layout e a estrutura 
 
 **Other Relevant Patterns:**
 - Dark mode: classe `.dark` no `<html>` (shadcn/ui convention)
-- CSS custom properties para theming (tokens OKLCH do Capybara 0)
+- CSS custom properties para theming (tokens OKLCH do Reverso 0)
 - Layout usa flexbox, não CSS Grid
 - `ScrollArea` do shadcn/ui para todos os painéis scrolláveis
 
@@ -108,7 +108,7 @@ Configurar `BrowserWindow` com frameless window, traffic lights, e dark mode no 
 Instalar todos os componentes shadcn/ui necessários e o bloco Application Shell 9.
 
 ### Phase 3: Layout Master (Renderer)
-Adaptar o Application Shell 9 para o layout de 4 zonas do Capybara Agent.
+Adaptar o Application Shell 9 para o layout de 4 zonas do Reverso Agent.
 
 ### Phase 4: Validação visual
 Verificar que o layout renderiza corretamente com as 4 zonas, drag region funciona, e dark mode está ativo.
@@ -169,7 +169,7 @@ Execute every task in order, top to bottom. Each task is atomic and independentl
 
 ### CREATE `src/renderer/src/components/app/ActivityBar.tsx`
 
-- **IMPLEMENT**: Barra vertical de ícones na extrema esquerda (~48px), inspirada na Activity Bar do Application Shell 9, mas customizada para os módulos do Capybara:
+- **IMPLEMENT**: Barra vertical de ícones na extrema esquerda (~48px), inspirada na Activity Bar do Application Shell 9, mas customizada para os módulos do Reverso:
   - Explorer (Files) — ícone padrão, ativo por default
   - Search — ícone de busca
   - Graph — ícone de rede/grafo
@@ -194,7 +194,7 @@ Execute every task in order, top to bottom. Each task is atomic and independentl
 
 ### CREATE `src/renderer/src/components/app/AppSidebar.tsx`
 
-- **IMPLEMENT**: Wrapper da sidebar do shadcn/ui adaptado para o Capybara. Na fundação, exibir:
+- **IMPLEMENT**: Wrapper da sidebar do shadcn/ui adaptado para o Reverso. Na fundação, exibir:
   - Header com nome do workspace (placeholder: "Investigation Desk")
   - Seções placeholder com labels: "Sources", "Investigations", "Dossier"
   - Cada seção como `Collapsible` com chevron
@@ -212,7 +212,7 @@ Execute every task in order, top to bottom. Each task is atomic and independentl
 ### CREATE `src/renderer/src/components/app/ViewerPanel.tsx`
 
 - **IMPLEMENT**: Painel central que ocupa o espaço restante (flex-1). Conteúdo placeholder:
-  - Header com breadcrumb simples ("Capybara Agent > Welcome")
+  - Header com breadcrumb simples ("Reverso Agent > Welcome")
   - Área de conteúdo com mensagem de boas-vindas
   - O header deve ter `-webkit-app-region: drag` para a drag region (apenas no topo)
   
@@ -295,8 +295,8 @@ Execute every task in order, top to bottom. Each task is atomic and independentl
   <html lang="en" class="dark">
   ```
 
-- **GOTCHA**: O shadcn/ui usa a classe `dark` no `<html>` para ativar dark mode. O tema Capybara 0 já define variáveis para `.dark`.
-- **VALIDATE**: App abre em dark mode. Cores do tema Capybara aplicadas.
+- **GOTCHA**: O shadcn/ui usa a classe `dark` no `<html>` para ativar dark mode. O tema Reverso 0 já define variáveis para `.dark`.
+- **VALIDATE**: App abre em dark mode. Cores do tema Reverso aplicadas.
 
 ### UPDATE CSS global — Drag region + body reset
 
@@ -390,7 +390,7 @@ Se todos os itens estiverem OK, o Application Shell 9 está instalado e rodando 
 - [ ] App Electron abre com frameless window (sem title bar nativa)
 - [ ] Traffic lights (fechar/minimizar/maximizar) visíveis no canto superior esquerdo
 - [ ] Drag region funciona: arrastar janela pelo header do viewer
-- [ ] Dark mode ativo por padrão (tema Capybara 0)
+- [ ] Dark mode ativo por padrão (tema Reverso 0)
 - [ ] Fontes IBM Plex renderizando
 - [ ] **Application Shell 9 instalado e rodando** — você validou com o checklist do guia Passo 7.4 (Activity Bar + Sidebar + área de conteúdo visíveis, sem erros)
 - [ ] Layout com 4 zonas visíveis: Activity Bar | Sidebar | Viewer | Chat

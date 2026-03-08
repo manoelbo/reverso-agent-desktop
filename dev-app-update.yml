@@ -1,3 +1,3 @@
 provider: generic
 url: https://example.com/auto-updates
-updaterCacheDirName: capybara-agent-tmp-updater
+updaterCacheDirName: reverso-agent-tmp-updater

@@ -6,7 +6,7 @@ description: Carregar contexto completo do projeto (estrutura, documentação, e
 
 ## Objetivo
 
-Construir entendimento abrangente do codebase e da documentação do **Capybara Agent** analisando estrutura, PRDs, regras do Cursor, skills e estado atual do repositório.
+Construir entendimento abrangente do codebase e da documentação do **Reverso Agent** analisando estrutura, PRDs, regras do Cursor, skills e estado atual do repositório.
 
 ## Processo
 
@@ -21,10 +21,10 @@ Se `tree` não existir: `find . -maxdepth 3 -not -path '*/node_modules/*' -not -
 
 ### 2. Ler documentação central
 
-- **Visão do projeto:** `.agents/capybara_agent_project.md` (overview, features, design system, UI spec)
+- **Visão do projeto:** `.agents/reverso_agent_project.md` (overview, features, design system, UI spec)
 - **PRD Master:** `.agents/prds/PRD-00-master.md` (missão, escopo MVP, stack, arquitetura, fases)
 - **PRDs de domínio:** `.agents/prds/PRD-01-workspace-infra-ai.md` até `PRD-05-ui-interaction-screens.md` (ler índices/sumários; aprofundar conforme necessidade)
-- **Regras do Cursor:** `.cursor/rules/*.mdc` (ex.: `capybara-agent-inspiration.mdc`)
+- **Regras do Cursor:** `.cursor/rules/*.mdc` (ex.: `reverso-agent-inspiration.mdc`)
 - **Plans:** `.agents/plans/README.md` e listar arquivos em `.agents/plans/`
 
 ### 3. Identificar arquivos-chave

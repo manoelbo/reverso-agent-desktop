@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
+import logoUrl from "@/assets/logo-gray-transparent.svg";
+
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -93,7 +95,7 @@ const fileTreeData: TreeItem[] = [
 function Logo({ className }: { className?: string }) {
   return (
     <img
-      src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/logos/shadcnblocks-logo.svg"
+      src={logoUrl}
       alt="Logo"
       className={cn("size-5 dark:invert", className)}
     />
@@ -156,8 +158,8 @@ export function AppSidebar({
               <a href="#">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-primary">
                   <img
-                    src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/logos/shadcnblocks-logo.svg"
-                    alt="Shadcnblocks"
+                    src={logoUrl}
+                    alt="Logo"
                     className="size-5 invert dark:invert-0"
                   />
                 </div>
@@ -379,8 +381,8 @@ export function ApplicationShell9() {
           <div className="flex items-center gap-2">
             <div className="flex aspect-square size-7 items-center justify-center rounded-sm bg-primary">
               <img
-                src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/logos/shadcnblocks-logo.svg"
-                alt="Shadcnblocks"
+                src={logoUrl}
+                alt="Logo"
                 className="size-4 invert dark:invert-0"
               />
             </div>
@@ -396,8 +398,8 @@ export function ApplicationShell9() {
           </div>
         </header>
 
-        <div className="flex flex-1 items-center justify-center bg-muted/30">
-          <Logo className="size-16 opacity-30" />
+        <div className="flex flex-1 items-center justify-center bg-[#f3f3f3]">
+          <Logo className="size-24 opacity-30" />
         </div>
 
         <div className="flex h-14 shrink-0 items-center justify-around border-t bg-background">
@@ -642,12 +644,12 @@ export function ApplicationShell9() {
             <div className="flex flex-1 overflow-hidden">
               <div
                 className={cn(
-                  "flex flex-1 items-center justify-center bg-muted/30",
+                  "flex flex-1 items-center justify-center bg-[#f3f3f3]",
                 )}
               >
                 {!isChatOpen ? (
                   <div className="flex flex-col items-center gap-4 text-center">
-                    <Logo className="size-16 opacity-30" />
+                    <Logo className="size-24 opacity-30" />
                     <div className="space-y-2">
                       <h3 className="text-lg font-medium">Start building</h3>
                       <p className="max-w-sm text-sm text-muted-foreground">
@@ -664,7 +666,7 @@ export function ApplicationShell9() {
                     </Button>
                   </div>
                 ) : (
-                  <Logo className="size-16 opacity-30" />
+                  <Logo className="size-24 opacity-30" />
                 )}
               </div>
 

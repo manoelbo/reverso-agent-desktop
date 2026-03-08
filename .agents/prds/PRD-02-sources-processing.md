@@ -9,7 +9,7 @@
 
 ## 1. Visão do Domínio
 
-Este domínio cobre a **ingestão, transformação e enriquecimento de documentos**. O Capybara Agent recebe documentos brutos (PDFs, e-mails, imagens, textos) e os transforma em artefatos Markdown estruturados e rastreáveis que alimentam o Dossier e o Graph View.
+Este domínio cobre a **ingestão, transformação e enriquecimento de documentos**. O Reverso Agent recebe documentos brutos (PDFs, e-mails, imagens, textos) e os transforma em artefatos Markdown estruturados e rastreáveis que alimentam o Dossier e o Graph View.
 
 ---
 

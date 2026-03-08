@@ -1,4 +1,4 @@
-# Capybara Agent — PRD Master
+# Reverso Agent — PRD Master
 
 > **Versão:** 0.1 (MVP)
 > **Autor:** Manoel Brasil Orlandi
@@ -7,13 +7,13 @@
 > **Desenvolvedor:** Solo (com agentic coding — Cursor/Claude)
 > **Plataforma MVP:** macOS first (DMG)
 > **Idioma UI:** Inglês
-> **Documento de referência:** `.agents/refs/Capybara_agent_project.md`
+> **Documento de referência:** `.agents/refs/Reverso_agent_project.md`
 
 ---
 
 ## 1. Resumo Executivo
 
-O **Capybara Agent** é um aplicativo desktop open source que utiliza LLMs de forma agêntica para apoiar e desenvolver investigações jornalísticas. O app ingere documentos brutos (PDFs, e-mails, imagens, textos), transforma-os em formatos estruturados e rastreáveis, e organiza tudo em dossiês Markdown interconectados com graph view — enquanto o jornalista mantém controle total sobre verificação de fatos e publicação.
+O **Reverso Agent** é um aplicativo desktop open source que utiliza LLMs de forma agêntica para apoiar e desenvolver investigações jornalísticas. O app ingere documentos brutos (PDFs, e-mails, imagens, textos), transforma-os em formatos estruturados e rastreáveis, e organiza tudo em dossiês Markdown interconectados com graph view — enquanto o jornalista mantém controle total sobre verificação de fatos e publicação.
 
 O produto é construído com Electron.js para rodar localmente, garantindo que dados sensíveis permaneçam na máquina do usuário. A integração inicial com LLMs é feita via OpenRouter, permitindo acesso a centenas de modelos com uma única API key.
 
@@ -53,7 +53,7 @@ O produto é construído com Electron.js para rodar localmente, garantindo que d
 
 ## 4. Mapa do Produto — Domínios
 
-O Capybara Agent é dividido em **5 domínios** que se interconectam:
+O Reverso Agent é dividido em **5 domínios** que se interconectam:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -80,7 +80,7 @@ O Capybara Agent é dividido em **5 domínios** que se interconectam:
 1. **Sources** produz `preview.md`, `metadata.md`, `replica.md` → alimenta **Dossier**
 2. **Dossier** consome metadata, organiza entidades, cria `[[links]]` → alimenta **Graph View**
 3. **Chat & Agent** orquestra tudo: processa Sources, popula Dossier, cria Clues, faz web search
-4. **Capybara Markdown** é o formato unificado: todos os domínios leem e escrevem nele
+4. **Reverso Markdown** é o formato unificado: todos os domínios leem e escrevem nele
 5. **Workspace & Infra** fornece IPC, storage, AI SDK e file watching para todos os domínios
 
 ### PRDs de Domínio
@@ -90,7 +90,7 @@ O Capybara Agent é dividido em **5 domínios** que se interconectam:
 | 1 | Workspace, Infra & AI Engine | `PRD-01-workspace-infra-ai.md` | Electron, IPC, storage, OpenRouter, model routing, temas, distribuição |
 | 2 | Sources & Document Processing | `PRD-02-sources-processing.md` | Ingestão de arquivos, PDF→MD, OCR, metadata, preview, replica, batch |
 | 3 | Dossier, Investigações & Graph View | `PRD-03-dossier-investigations-graph.md` | Entidades, annotations, clues, linhas investigativas, graph, traceability |
-| 4 | Chat, Agent & Capybara Markdown | `PRD-04-chat-agent-markdown.md` | Chat UI, agent loop, tools, modos, dialeto markdown, renderer |
+| 4 | Chat, Agent & Reverso Markdown | `PRD-04-chat-agent-markdown.md` | Chat UI, agent loop, tools, modos, dialeto markdown, renderer |
 | 5 | UI, Interação & Screens | `PRD-05-ui-interaction-screens.md` | Layout master, sidebar, viewer templates, Chat-First Principle, action bar, screen map, CAN/CANNOT, keyboard shortcuts |
 
 ---
@@ -113,7 +113,7 @@ O Capybara Agent é dividido em **5 domínios** que se interconectam:
 - ✅ Graph View (widget flutuante + fullscreen)
 - ✅ Bidirectional links [[wikilinks]]
 - ✅ Verificação manual de status (verified/unverified/rejected)
-- ✅ Capybara Markdown com blocos custom (:::annotation, :::clue, :::event)
+- ✅ Reverso Markdown com blocos custom (:::annotation, :::clue, :::event)
 - ✅ Token counter com sugestão de summarize
 
 **Técnico:**
@@ -162,7 +162,7 @@ O Capybara Agent é dividido em **5 domínios** que se interconectam:
 | Componentes | shadcn/ui + shadcnblocks (Pro) | ✅ Decidido |
 | Blocos estendidos | shadcnblocks.com (assinatura Pro) | ✅ Decidido |
 | Application Shell | Application Shell 9 (IDE-Style File Explorer) | ✅ Decidido |
-| Tema | Capybara 0 (tweakcn) | ✅ Decidido |
+| Tema | Reverso 0 (tweakcn) | ✅ Decidido |
 | Fontes | IBM Plex Sans Thai, Mono, Sans JP | ✅ Decidido |
 | AI gateway | OpenRouter (v0.1) | ✅ Decidido |
 | Cores | OKLCH-based tokens | ✅ Decidido |
@@ -237,7 +237,7 @@ Motivo: Para indexar backlinks, buscar entidades, rastrear status de processamen
 **→ Recomendação: `MiniSearch`**
 Motivo: Autocomplete em tempo real para menções (@source, @dossier, !investigation), fuzzy matching, levíssimo. O volume de dados por workspace (centenas a poucos milhares de docs) está bem dentro da capacidade do MiniSearch.
 
-#### 6.7 Markdown Rendering (Capybara Markdown)
+#### 6.7 Markdown Rendering (Reverso Markdown)
 
 | Componente | Lib recomendada |
 |-----------|-----------------|
@@ -250,7 +250,7 @@ Motivo: Autocomplete em tempo real para menções (@source, @dossier, !investiga
 | Math (se necessário) | `remark-math` + `rehype-katex` |
 
 **→ Recomendação: Unified ecosystem (`react-markdown` + `remark-directive` + `remark-directive-rehype` + plugins custom)**
-Motivo: O Capybara Markdown tem extensões não-triviais (:::annotation, [[links]], →[source]). O unified ecosystem (remark/rehype) é feito exatamente para isso: parse → AST → transform → render. Cada extensão é um plugin isolado e testável.
+Motivo: O Reverso Markdown tem extensões não-triviais (:::annotation, [[links]], →[source]). O unified ecosystem (remark/rehype) é feito exatamente para isso: parse → AST → transform → render. Cada extensão é um plugin isolado e testável.
 
 #### 6.8 Graph View
 
@@ -261,7 +261,7 @@ Motivo: O Capybara Markdown tem extensões não-triviais (:::annotation, [[links
 | D3.js force | Máxima customização | Muito low-level, integração React manual |
 
 **→ Recomendação: `react-force-graph` (2D)**
-Motivo: O graph view do Capybara é inspirado no Obsidian — force-directed, interativo, nós clicáveis. react-force-graph entrega exatamente isso, é React-nativo, e suporta Canvas/WebGL para performance. Para o MVP, é a opção com menor friction.
+Motivo: O graph view do Reverso é inspirado no Obsidian — force-directed, interativo, nós clicáveis. react-force-graph entrega exatamente isso, é React-nativo, e suporta Canvas/WebGL para performance. Para o MVP, é a opção com menor friction.
 
 #### 6.9 Chat Input (Menções e Autocomplete)
 
@@ -332,7 +332,7 @@ O bloco **Application Shell 9** ("IDE-Style File Explorer Shell") é a base estr
 - **Panel Toggle** — controle de painéis secundários (chat, graph)
 - **Dark-friendly design** — tema escuro nativo
 
-Esse padrão replica o layout do VS Code, que é ideal para o Capybara Agent por ser um app de gerenciamento de arquivos/documentos com múltiplos painéis.
+Esse padrão replica o layout do VS Code, que é ideal para o Reverso Agent por ser um app de gerenciamento de arquivos/documentos com múltiplos painéis.
 
 **Dependências do bloco:** `button`, `collapsible`, `drawer`, `scroll-area`, `sidebar` (shadcn/ui) + `lucide-react`.
 
@@ -412,7 +412,7 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 │  │                                                          │ │
 │  │  ┌────────────┐  ┌──────────────┐  ┌─────────────────┐ │ │
 │  │  │  Sidebar   │  │  Viewer      │  │  Chat Panel     │ │ │
-│  │  │  (file     │  │  (Capybara   │  │  (react-mentions│ │ │
+│  │  │  (file     │  │  (Reverso   │  │  (react-mentions│ │ │
 │  │  │   tree,    │  │   Markdown   │  │   input,        │ │ │
 │  │  │   drag &   │  │   renderer,  │  │   action pills, │ │ │
 │  │  │   drop,    │  │   Graph View │  │   cmdk menu,    │ │ │
@@ -440,7 +440,7 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 - ✅ Setup electron-vite + React + TypeScript + Tailwind
 - ✅ Configurar shadcn/ui (`pnpm dlx shadcn@latest init`)
 - ✅ Configurar shadcnblocks como registry estendido em `components.json`
-- ✅ Instalar tema Capybara 0 (`pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmmfid9kr000104jufj121z63`)
+- ✅ Instalar tema Reverso 0 (`pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmmfid9kr000104jufj121z63`)
 - ✅ Instalar Application Shell 9 (`@shadcnblocks/application-shell9`) como base do layout
 - ✅ Fontes IBM Plex bundled
 - ✅ Frameless window com drag regions (macOS traffic lights)
@@ -450,7 +450,7 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 - ✅ File system manager (workspace CRUD + chokidar watcher)
 - ✅ Zustand stores (workspace, viewer, chat)
 - ✅ Sidebar com file tree dinâmico
-- ✅ Viewer com Capybara Markdown renderer (react-markdown + remark-directive + gray-matter)
+- ✅ Viewer com Reverso Markdown renderer (react-markdown + remark-directive + gray-matter)
 - ✅ Blocos custom: :::annotation, :::clue, :::event, [[wikilinks]]
 - ✅ Onboarding screen (criar Investigation Desk + API key + tema)
 
@@ -555,7 +555,7 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 | **better-sqlite3 native module** pode causar problemas de rebuild com Electron | Médio | Usar `electron-rebuild`; testar em CI para 3 plataformas; fallback para sql.js se necessário |
 | **Qualidade da replica.md** depende do LLM — tabelas complexas podem falhar | Alto | Pipeline vision (páginas como imagens); modelo dedicado para processing; fallback manual |
 | **Tamanho do app Electron** pode ser grande (200MB+) | Médio | Não embutir Playwright; otimizar assets; usar fontes subset |
-| **Complexidade do Capybara Markdown** — muitas extensões custom podem criar bugs de rendering | Médio | Cada extensão como plugin isolado com testes unitários; fallback para markdown padrão |
+| **Complexidade do Reverso Markdown** — muitas extensões custom podem criar bugs de rendering | Médio | Cada extensão como plugin isolado com testes unitários; fallback para markdown padrão |
 
 ---
 
@@ -589,7 +589,7 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 
 ## 13. User Journeys de Referência
 
-O documento de referência (`Capybara_agent_project.md`) contém user journeys detalhados que servem como **critérios de aceitação** para cada fase:
+O documento de referência (`Reverso_agent_project.md`) contém user journeys detalhados que servem como **critérios de aceitação** para cada fase:
 
 | Versão | Persona | Cenário | Seção no doc de referência |
 |---|---|---|---|
@@ -604,6 +604,6 @@ Para o MVP, os journeys de v0.1 de Thiago e Linn são os **cenários-chave de va
 
 ## 14. Anexos
 
-- **Documento de referência completo:** `.agents/refs/Capybara_agent_project.md`
-- **Design System (tema Capybara 0):** [tweakcn.com/themes/cmmfid9kr000104jufj121z63](https://tweakcn.com/themes/cmmfid9kr000104jufj121z63)
+- **Documento de referência completo:** `.agents/refs/Reverso_agent_project.md`
+- **Design System (tema Reverso 0):** [tweakcn.com/themes/cmmfid9kr000104jufj121z63](https://tweakcn.com/themes/cmmfid9kr000104jufj121z63)
 - **PRDs de domínio:** `.agents/prds/PRD-01-*.md` a `PRD-05-*.md`

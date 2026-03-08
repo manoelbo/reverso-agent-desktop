@@ -9,7 +9,7 @@
 
 ## 1. Visão do Domínio
 
-Este domínio cobre a **fundação técnica** do Capybara Agent: setup do Electron, comunicação IPC, storage local, integração com provedores de IA, roteamento de modelos, sistema de temas, e toda a infraestrutura que os outros domínios consomem.
+Este domínio cobre a **fundação técnica** do Reverso Agent: setup do Electron, comunicação IPC, storage local, integração com provedores de IA, roteamento de modelos, sistema de temas, e toda a infraestrutura que os outros domínios consomem.
 
 ---
 
@@ -35,7 +35,7 @@ Este domínio cobre a **fundação técnica** do Capybara Agent: setup do Electr
 **Estrutura de diretórios:**
 
 ```
-capybara-agent/
+reverso-agent/
 ├── electron.vite.config.ts
 ├── package.json
 ├── src/
@@ -196,11 +196,11 @@ mainWindow.webContents.send('ai:stream-done', { toolCalls: [...] })
 Cada "Investigation Desk" é uma pasta no filesystem com estrutura fixa:
 
 ```
-~/CapybaraWorkspaces/
+~/ReversoWorkspaces/
 ├── minha-investigacao/
-│   ├── .capybara/              # Configuração do workspace
+│   ├── .reverso/              # Configuração do workspace
 │   │   ├── config.json         # Settings (modelos, tema, etc.)
-│   │   └── capybara.db         # SQLite (índice, chat, backlinks)
+│   │   └── reverso.db         # SQLite (índice, chat, backlinks)
 │   ├── sources/                # Documentos originais + processados
 │   │   ├── contrato-01/
 │   │   │   ├── contrato-01.pdf     # Original (imutável)
@@ -269,7 +269,7 @@ interface SearchIndexTable {
 // Chat sessions — MVP: in-memory only (Zustand store)
 // Post-MVP: persist to SQLite with ChatSessions + ChatMessages tables
 
-interface CapybaraDB {
+interface ReversoDB {
   sources: SourcesTable
   entities: EntitiesTable
   backlinks: BacklinksTable
@@ -280,14 +280,14 @@ export function createDatabase(dbPath: string) {
   const dialect = new SqliteDialect({
     database: new Database(dbPath),
   })
-  return new Kysely<CapybaraDB>({ dialect })
+  return new Kysely<ReversoDB>({ dialect })
 }
 ```
 
 Criação das tabelas via SQL direto no startup (sem ferramenta de migrations):
 
 ```typescript
-async function initializeSchema(db: Kysely<CapybaraDB>) {
+async function initializeSchema(db: Kysely<ReversoDB>) {
   await db.schema
     .createTable('sources')
     .ifNotExists()
@@ -336,7 +336,7 @@ import chokidar from 'chokidar'
 
 export function watchWorkspace(workspacePath: string) {
   const watcher = chokidar.watch(workspacePath, {
-    ignored: /(^|[\/\\])\.capybara/,
+    ignored: /(^|[\/\\])\.reverso/,
     persistent: true,
     ignoreInitial: true,
   })
@@ -352,7 +352,7 @@ export function watchWorkspace(workspacePath: string) {
 
 ### 3.8 Settings & Preferences
 
-Persistido em `.capybara/config.json` dentro de cada workspace:
+Persistido em `.reverso/config.json` dentro de cada workspace:
 
 ```json
 {

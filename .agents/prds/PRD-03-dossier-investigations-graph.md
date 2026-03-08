@@ -3,13 +3,13 @@
 > **Domínio:** Dossier, Investigações & Graph View
 > **PRD Master:** `PRD-00-master.md`
 > **Depende de:** Workspace & Infra, Sources & Processing
-> **Consumido por:** Chat & Agent, Capybara Markdown (renderer)
+> **Consumido por:** Chat & Agent, Reverso Markdown (renderer)
 
 ---
 
 ## 1. Visão do Domínio
 
-Este domínio é o **núcleo de conhecimento** do Capybara Agent. Aqui vivem as entidades (pessoas, grupos, lugares, eventos), as conexões entre elas (bidirectional links), as investigações com suas pistas (clues), e a visualização em grafo. Tudo é alimentado pelo processamento de Sources e orquestrado pelo Agent via Chat.
+Este domínio é o **núcleo de conhecimento** do Reverso Agent. Aqui vivem as entidades (pessoas, grupos, lugares, eventos), as conexões entre elas (bidirectional links), as investigações com suas pistas (clues), e a visualização em grafo. Tudo é alimentado pelo processamento de Sources e orquestrado pelo Agent via Chat.
 
 ---
 
@@ -270,7 +270,7 @@ Qualquer texto envolvido em `[[ ]]` cria um link bidirecional:
 ### 5.2 Resolução de links
 
 ```typescript
-async function resolveWikilink(name: string, db: Kysely<CapybaraDB>): Promise<string | null> {
+async function resolveWikilink(name: string, db: Kysely<ReversoDB>): Promise<string | null> {
   // 1. Buscar por nome exato no índice de entidades (SQLite via Kysely)
   const entity = await db
     .selectFrom('entities')
@@ -430,7 +430,7 @@ interface GraphStore {
 - Menção `!Corporate Cluster` carrega investigation + clues
 - Backlinks e entities alimentam o contexto do agente
 
-### → Produz para Capybara Markdown (Renderer)
+### → Produz para Reverso Markdown (Renderer)
 - Frontmatter com schema padronizado para rendering
 - Blocos `:::annotation`, `:::clue`, `:::event` para rendering custom
 - `[[wikilinks]]` para navegação

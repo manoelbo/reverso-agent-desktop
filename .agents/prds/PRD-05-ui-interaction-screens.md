@@ -4,13 +4,13 @@
 > **PRD Master:** `PRD-00-master.md`
 > **Depende de:** Todos os domínios (Infra, Sources, Dossier, Chat/Agent)
 > **Consumido por:** Implementação do Renderer Process
-> **Referência primária:** `.agents/refs/Capybara_agent_project.md` §Design System, §User Interface Specification
+> **Referência primária:** `.agents/refs/Reverso_agent_project.md` §Design System, §User Interface Specification
 
 ---
 
 ## 1. Visão do Domínio
 
-Este domínio especifica **como o usuário interage com o Capybara Agent**: layout master, estrutura da sidebar, templates do viewer, o Chat-First Principle (padrão arquitetural de interação), action bars, mapa completo de telas, e a divisão clara entre o que o usuário CAN e CANNOT fazer diretamente.
+Este domínio especifica **como o usuário interage com o Reverso Agent**: layout master, estrutura da sidebar, templates do viewer, o Chat-First Principle (padrão arquitetural de interação), action bars, mapa completo de telas, e a divisão clara entre o que o usuário CAN e CANNOT fazer diretamente.
 
 Os domínios anteriores (PRD-01 a PRD-04) cobrem **o que** o sistema faz. Este PRD cobre **como** o usuário experimenta isso.
 
@@ -18,7 +18,7 @@ Os domínios anteriores (PRD-01 a PRD-04) cobrem **o que** o sistema faz. Este P
 
 ## 2. Referências de Design
 
-O Capybara Agent é inspirado em 5 referências:
+O Reverso Agent é inspirado em 5 referências:
 
 | Referência | O que inspira |
 |---|---|
@@ -38,7 +38,7 @@ O layout master é construído sobre o bloco **Application Shell 9** ("IDE-Style
 - **Scroll areas** — gerenciamento de scroll em árvores longas
 - **Dark mode nativo** — design dark-friendly com highlights em seleção
 
-O Capybara Agent adapta esse shell adicionando o **Chat Panel** como terceira zona persistente à direita.
+O Reverso Agent adapta esse shell adicionando o **Chat Panel** como terceira zona persistente à direita.
 
 ---
 
@@ -586,7 +586,7 @@ Lista completa de todas as telas e estados do aplicativo:
 ```
 ┌─────────────────────────────────────────────┐
 │                                             │
-│  🐾 Welcome to Capybara Agent              │
+│  🐾 Welcome to Reverso Agent              │
 │                                             │
 │  Create your first Investigation Desk       │
 │                                             │
@@ -609,7 +609,7 @@ Lista completa de todas as telas e estados do aplicativo:
 
 - Exibido na primeira vez que o app abre (sem workspace existente)
 - Após criar, o app navega para o layout master com workspace vazio
-- API Key é salva em `.capybara/config.json` dentro do workspace
+- API Key é salva em `.reverso/config.json` dentro do workspace
 - Modelos default são pré-configurados (podem ser ajustados depois em Settings)
 - Se o usuário já tem workspaces, mostra uma tela de seleção em vez do onboarding
 
@@ -697,7 +697,7 @@ Todos os painéis scrolláveis (sidebar, viewer, chat message area) devem usar o
 pnpm dlx shadcn@latest add scroll-area
 ```
 
-### Tema Capybara 0 — Instalação
+### Tema Reverso 0 — Instalação
 
 ```bash
 pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmmfid9kr000104jufj121z63

@@ -1,20 +1,20 @@
-# Capybara Agent Project
+# Reverso Agent Project
 
 Criado por: Manoel Brasil Orlandi
 Criado em: March 5, 2026 10:29 AM
 Última atualização em: March 6, 2026 9:23 PM
 
-**Capybara Agent** is an open source desktop application that uses LLMs agentically to support and develop journalistic investigations.
+**Reverso Agent** is an open source desktop application that uses LLMs agentically to support and develop journalistic investigations.
 
 ## Overview
 
-Capybara Agent helps journalists process raw, unstructured information and turn it into organized, traceable investigative work, while always keeping a clear path back to the original sources. The project is built using Electron.js to operate as a local application, ensuring sensitive data remains on the user's machine, reducing costs, and making it widely accessible across different platforms to facilitate easy installation.
+Reverso Agent helps journalists process raw, unstructured information and turn it into organized, traceable investigative work, while always keeping a clear path back to the original sources. The project is built using Electron.js to operate as a local application, ensuring sensitive data remains on the user's machine, reducing costs, and making it widely accessible across different platforms to facilitate easy installation.
 
 ## Core Features
 
 ### 1. Workspace Setup & AI Provider Flexibility
 
-Capybara Agent allows journalists to configure their workspace and customize the agent according to their specific investigative needs. It does not lock you into a single AI provider, offering complete flexibility to decide which models to use. You can choose the LLM and provider that best fits your needs, budget, or privacy requirements, whether that is OpenAI, Anthropic, a local model, or any other supported backend.
+Reverso Agent allows journalists to configure their workspace and customize the agent according to their specific investigative needs. It does not lock you into a single AI provider, offering complete flexibility to decide which models to use. You can choose the LLM and provider that best fits your needs, budget, or privacy requirements, whether that is OpenAI, Anthropic, a local model, or any other supported backend.
 
 - **Isolated Workspaces ("Investigation Desk"):** Similar to an Obsidian Vault, users can create dedicated, isolated environments for each investigation. Each workspace operates entirely independently, maintaining its own dedicated dossier, list of investigative lines, source repository, and specific configurations. Switching environments means completely stepping out of one investigation and into another.
 - **Streamlined OpenRouter Integration (Testing Phase):** To facilitate rapid testing and ease of use in the initial versions, the setup is radically simplified. Users only need to provide a single **OpenRouter API Key**. While future versions will feature robust authentication and direct multi-provider setups, this approach grants immediate access to a vast array of models.
@@ -26,7 +26,7 @@ Capybara Agent allows journalists to configure their workspace and customize the
 
 ### 2. Sources: Document Transformation, Formatting & Metadata Enrichment
 
-Capybara Agent ingests different types of sources and converts them into structured, workable formats. Contracts, reports, chat logs, photographs, transcriptions: regardless of how messy or unstructured the input is, the agent parses and reformats it for investigative use, making it ready to be connected to the Dossier and Graph View.
+Reverso Agent ingests different types of sources and converts them into structured, workable formats. Contracts, reports, chat logs, photographs, transcriptions: regardless of how messy or unstructured the input is, the agent parses and reformats it for investigative use, making it ready to be connected to the Dossier and Graph View.
 
 - **The Source Architecture:** To ensure the AI and the user can easily understand and decide if a document is relevant to the investigation context, every ingested source is organized into a clear, multi-file structure:
     - **Original Document:** The raw, untouched file.
@@ -53,7 +53,7 @@ Journalists can create and write their own investigative lines to guide the agen
 
 ### 4. Investigative Dossiers
 
-Capybara Agent creates dossiers that consolidate the most important points of an investigation. Inspired by Obsidian, dossiers are written in standard Markdown with custom extensions to organize all collected information. They feature Graph View support, where users can visualize nodes and explore how people, places, and things connect within the universe of the investigation. They can be easily visualized directly within the desktop application.
+Reverso Agent creates dossiers that consolidate the most important points of an investigation. Inspired by Obsidian, dossiers are written in standard Markdown with custom extensions to organize all collected information. They feature Graph View support, where users can visualize nodes and explore how people, places, and things connect within the universe of the investigation. They can be easily visualized directly within the desktop application.
 
 - **Dedicated AI-Managed Environment:** Dossiers live in a separate, structured environment of folders and Markdown files. Initially, this area is strictly managed and organized by the AI, meaning journalists cannot edit these files directly, ensuring structural integrity.
 - **Dossier Configuration File:** A core `dossier.md` file dictates the instructions and rules for how the agent should structure and organize the information.
@@ -78,7 +78,7 @@ Powered by the bidirectional linking from the dossiers, the Graph View is an int
 
 ### 6. Source Indexing & Traceability
 
-Every piece of work Capybara Agent produces is indexed and connected back to its original sources. This traceability is directly applied when stating facts in the dossiers and logging clues found during the investigative lines, always linking these points back to the original documents. This allows journalists to easily review the context. Additionally, all materials and claims can be manually verified, and the user can assign a status to each item (such as checked, unverified, or discarded).
+Every piece of work Reverso Agent produces is indexed and connected back to its original sources. This traceability is directly applied when stating facts in the dossiers and logging clues found during the investigative lines, always linking these points back to the original documents. This allows journalists to easily review the context. Additionally, all materials and claims can be manually verified, and the user can assign a status to each item (such as checked, unverified, or discarded).
 
 - **Precise Backtracking:** Whenever an investigative annotation is made in a dossier or a clue is added to an investigative line, the system provides exact backtracking to where the information originated.
 - **Original Source Highlighting:** Similar to tools like NotebookLM, traceability links point not just to the file, but to the exact location where the fact is mentioned, allowing the user to see the specific text highlighted within the original PDF or document.
@@ -107,7 +107,7 @@ The application features an interactive chat interface that connects seamlessly 
 
 ### 8. Specialized Investigative Agent
 
-Capybara Agent is powered by an agentic AI specialized in investigative journalism tasks. The AI is equipped with multiple tools, commands, and skills, executing workflows designed specifically for journalistic exploration. The agent autonomously conducts research, extracts data, organizes information into dossiers, and performs strategic planning to help journalists seamlessly explore their source base. Inspired by how coding agents like Claude Code and Codex operate, the agent follows an agentic loop: it receives a task, plans, selects and executes the right tools, observes the results, and iterates until the objective is complete.
+Reverso Agent is powered by an agentic AI specialized in investigative journalism tasks. The AI is equipped with multiple tools, commands, and skills, executing workflows designed specifically for journalistic exploration. The agent autonomously conducts research, extracts data, organizes information into dossiers, and performs strategic planning to help journalists seamlessly explore their source base. Inspired by how coding agents like Claude Code and Codex operate, the agent follows an agentic loop: it receives a task, plans, selects and executes the right tools, observes the results, and iterates until the objective is complete.
 
 - **Reading & Navigation Tools:** Tools that allow the agent to read sources, dossier files, investigative lines, and list workspace contents to understand the current state of the investigation.
 - **Writing & Editing Tools:** Tools for creating, editing, moving, and deleting Markdown files across the workspace, enabling the agent to build and maintain dossiers, write annotations, and organize information.
@@ -124,9 +124,9 @@ Capybara Agent is powered by an agentic AI specialized in investigative journali
     - `/summarize`: Compresses the active chat context to reduce token usage while retaining essential investigative knowledge.
     - `/web_search`: Directs the agent to perform live internet searches to obtain external information and facts outside the local source base.
 
-### 9. Capybara Markdown: Custom Markdown Dialect & Renderer
+### 9. Reverso Markdown: Custom Markdown Dialect & Renderer
 
-Capybara Agent uses its own extended Markdown dialect, purpose-built for investigative journalism. Rather than being a generic Markdown editor, the application is a **specialized Markdown interpreter and viewer** that renders standard Markdown beautifully while introducing custom block types, metadata conventions, and linking primitives designed specifically for organizing, connecting, and verifying investigative material. Every `.md` file in the workspace follows this dialect, and the viewer knows how to parse and render all of its extensions into a polished, interactive read-only interface.
+Reverso Agent uses its own extended Markdown dialect, purpose-built for investigative journalism. Rather than being a generic Markdown editor, the application is a **specialized Markdown interpreter and viewer** that renders standard Markdown beautifully while introducing custom block types, metadata conventions, and linking primitives designed specifically for organizing, connecting, and verifying investigative material. Every `.md` file in the workspace follows this dialect, and the viewer knows how to parse and render all of its extensions into a polished, interactive read-only interface.
 
 - **Styled Markdown Rendering:** All Markdown files are rendered with clean typography, proper spacing, and theme-aware colors (Catppuccin Latte/Frappé). The renderer handles standard elements (headings, lists, tables, code blocks, blockquotes, images) with a documentation-site aesthetic inspired by Mintlify and Docusaurus, optimized for long reading sessions.
 - **Bidirectional Links (`[[ ]]`):** The dialect supports Obsidian-style wikilinks. Wrapping any entity name in double brackets (e.g., `[[João Silva]]`, `[[Construtora XYZ]]`) creates a clickable navigation link that connects to the corresponding dossier entity. These links are the foundation of the Graph View: every `[[ ]]` reference automatically generates a node and an edge in the knowledge graph.
@@ -210,15 +210,15 @@ João Silva signed the contract as legal representative.
 
 ## Philosophy
 
-Capybara Agent is built on the premise that investigative journalism requires not just powerful tools, but **transparent, reproducible, and accessible ones**. The agent does the heavy lifting, but the journalist always stays in control, with full visibility into how every conclusion was reached.
+Reverso Agent is built on the premise that investigative journalism requires not just powerful tools, but **transparent, reproducible, and accessible ones**. The agent does the heavy lifting, but the journalist always stays in control, with full visibility into how every conclusion was reached.
 
-Being open source means that anyone can inspect, contribute to, and improve Capybara Agent. Journalism tools should be as accountable as the journalism they support.
+Being open source means that anyone can inspect, contribute to, and improve Reverso Agent. Journalism tools should be as accountable as the journalism they support.
 
 # Design System
 
-Capybara Agent uses **shadcn/ui** as its component layer, running inside Electron's renderer process (which is essentially a standard web app on Chromium). The difference between a regular web app and an Electron app is mostly about packaging, security boundaries, and access to native APIs, not about how shadcn works.
+Reverso Agent uses **shadcn/ui** as its component layer, running inside Electron's renderer process (which is essentially a standard web app on Chromium). The difference between a regular web app and an Electron app is mostly about packaging, security boundaries, and access to native APIs, not about how shadcn works.
 
-The application uses a custom theme called **Capybara 0**, built with [tweakcn](https://tweakcn.com/themes/cmmfid9kr000104jufj121z63) and distributed as a shadcn registry item.
+The application uses a custom theme called **Reverso 0**, built with [tweakcn](https://tweakcn.com/themes/cmmfid9kr000104jufj121z63) and distributed as a shadcn registry item.
 
 ### Theme Characteristics
 
@@ -327,7 +327,7 @@ This pattern keeps Node.js APIs out of the renderer entirely.
 
 ## Typography: Bundling IBM Plex Locally
 
-The Capybara 0 theme specifies IBM Plex as its font family. For a desktop application, fonts should be **bundled locally** rather than loaded from Google Fonts:
+The Reverso 0 theme specifies IBM Plex as its font family. For a desktop application, fonts should be **bundled locally** rather than loaded from Google Fonts:
 
 - Works offline
 - Eliminates network-dependent rendering
@@ -371,7 +371,7 @@ The Capybara 0 theme specifies IBM Plex as its font family. For a desktop applic
 
 ### Custom Window Frame & Drag Regions
 
-Capybara Agent uses a **frameless window** (no native title bar). This requires explicit drag region management:
+Reverso Agent uses a **frameless window** (no native title bar). This requires explicit drag region management:
 
 ```css
 /* The top header bar is draggable (allows window movement) */
@@ -409,7 +409,7 @@ Installed directly from the shadcn registry. These are low-level building blocks
 
 ### Tier 2: Product components (`src/renderer/components/app/`)
 
-Composed from Tier 1 primitives, tailored to Capybara Agent's specific UI patterns:
+Composed from Tier 1 primitives, tailored to Reverso Agent's specific UI patterns:
 
 - `AppSidebar` (file tree with status badges, drop zone, and processing status feed)
 - `ViewerPanel` (Markdown renderer with breadcrumb navigation)
@@ -428,7 +428,7 @@ Composed from Tier 1 primitives, tailored to Capybara Agent's specific UI patter
 
 ## Design Philosophy & References
 
-Capybara Agent's interface draws from four main references:
+Reverso Agent's interface draws from four main references:
 
 - **Obsidian** for the sidebar file tree, the Graph View visualization, and the read-only Markdown viewer. The application is not an editor. It is a *viewer* with an AI chat layer on top.
 - **Notion** for workspace organization and navigation style. Instead of stacked horizontal tabs, pages open one at a time in the viewer area, similar to how Notion handles page navigation. Notion's chat panel layout also inspires how the AI panel is organized on the right side, keeping everything clean and accessible.
@@ -852,7 +852,7 @@ The chat is the **command center** of the application. It is always visible on t
 │  Mode: [Q] [P] [A]               Tokens: 42.3k / 150k  │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
-│  🤖 Capybara:                                           │
+│  🤖 Reverso:                                           │
 │  "Found 3 contracts mentioning Construtora XYZ.          │
 │   I'll start reading the budget tables from each one,    │
 │   this should take about 2 minutes."                     │
@@ -861,7 +861,7 @@ The chat is the **command center** of the application. It is always visible on t
 │  [💡 New Clue: Company X in 3 contracts]      [open]     │
 │  [👤 João Silva.md created in Dossier]        [open]     │
 │                                                          │
-│  🤖 Capybara:                                           │
+│  🤖 Reverso:                                           │
 │  "Done! I created João Silva's page in the Dossier       │
 │   with the connections I found. Should I continue         │
 │   analyzing the remaining contracts?"                    │
@@ -1002,10 +1002,10 @@ Thiago is deep into a major investigation regarding the São Paulo City Hall (*P
 - **Price Auditing:** Extract and cross-reference the budget tables across all contracts to see if the unit prices are artificially inflated.
 - **Bulletproof Accuracy (Avoiding Lawsuits):** Thiago is highly concerned about being sued for defamation by these powerful, billionaire companies. He cannot afford a single mistake; he needs a strict revision strategy to double-check every claim before writing his article.
 
-**How Capybara Agent Solves His Problems:**
+**How Reverso Agent Solves His Problems:**
 
-- **Massive Time Savings:** Capybara Agent does the heavy lifting, ingesting the massive 200MB contracts and transforming the complex tables into workable formats in minutes, saving Thiago months of manual reading.
-- **Source Indexing & Traceability:** This is Thiago's safety net. Every extracted price or connection is strictly indexed back to its original source. Before publishing, Thiago uses Capybara's traceability features to click directly through to the exact page of the original contract to manually verify the information.
+- **Massive Time Savings:** Reverso Agent does the heavy lifting, ingesting the massive 200MB contracts and transforming the complex tables into workable formats in minutes, saving Thiago months of manual reading.
+- **Source Indexing & Traceability:** This is Thiago's safety net. Every extracted price or connection is strictly indexed back to its original source. Before publishing, Thiago uses Reverso's traceability features to click directly through to the exact page of the original contract to manually verify the information.
 - **Status Assignment (Revision Strategy):** He uses the tool to assign statuses to every clue (e.g., "unverified," "checked," "discarded"), ensuring nothing makes it into the final story without his explicit, manual confirmation.
 
 ---
@@ -1028,9 +1028,9 @@ Lynn is investigating the financial networks exposed in the Epstein Files. She h
 - **Filter the Noise:** Separate the relevant Swedish connections from the millions of unrelated emails so she can focus her investigation only on what matters to her local audience.
 - **Ease of Use:** Since she doesn't know how to use Python scripts or command-line search tools, she needs a system that understands what she wants using plain English.
 
-**How Capybara Agent Solves Her Problems:**
+**How Reverso Agent Solves Her Problems:**
 
-- **Agentic Search Tools:** Instead of heavy OCR processing, the Capybara Agent acts much like an AI coding assistant (such as Claude Code or Cursor). Lynn simply uses the chat interface to ask, *"Search the entire database for any emails mentioning Sweden, Stockholm, or Swedish financial institutions."* * **Automated Tagging & Organization:** The agent autonomously navigates the HTML and text files, locates the relevant emails, and separates them from the rest of the dataset. It automatically tags these files with high relevance so Lynn can easily access them.
+- **Agentic Search Tools:** Instead of heavy OCR processing, the Reverso Agent acts much like an AI coding assistant (such as Claude Code or Cursor). Lynn simply uses the chat interface to ask, *"Search the entire database for any emails mentioning Sweden, Stockholm, or Swedish financial institutions."* * **Automated Tagging & Organization:** The agent autonomously navigates the HTML and text files, locates the relevant emails, and separates them from the rest of the dataset. It automatically tags these files with high relevance so Lynn can easily access them.
 - **Custom Investigative Lines:** Lynn can then set an investigative line specifically on this newly segregated "Swedish" folder, asking the agent to autonomously summarize the context of why Stockholm was mentioned in these specific threads, keeping everything organized in her markdown dossiers.
 
 # User Journey
@@ -1098,7 +1098,7 @@ With the Dossier fully populated, Linn opens the **Interactive Project Graph Vie
 
 **1. Enhanced Setup & Model Selection**
 
-Thiago updates Capybara Agent to version 0.3. Instead of manually pasting an API key, he now logs in directly with his OpenRouter account. The interface provides a clear explanation of how OpenRouter works, noting that creating a new account grants a $10 starting credit. In his workspace settings, he explores the advanced model selection. Using a built-in search function that queries the entire OpenRouter catalog, he searches and handpicks the exact models he wants for the three core tasks: document extraction, text summarization, and investigative reasoning. Before starting, he toggles his workspace appearance to his preferred Dark Mode.
+Thiago updates Reverso Agent to version 0.3. Instead of manually pasting an API key, he now logs in directly with his OpenRouter account. The interface provides a clear explanation of how OpenRouter works, noting that creating a new account grants a $10 starting credit. In his workspace settings, he explores the advanced model selection. Using a built-in search function that queries the entire OpenRouter catalog, he searches and handpicks the exact models he wants for the three core tasks: document extraction, text summarization, and investigative reasoning. Before starting, he toggles his workspace appearance to his preferred Dark Mode.
 
 **2. Operating Modes & Precision Table Extraction**
 

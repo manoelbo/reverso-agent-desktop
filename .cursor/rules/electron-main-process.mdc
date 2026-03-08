@@ -43,5 +43,5 @@ ipcMain.handle('channel:action', async (_event, args) => {
 
 ## Config por workspace
 
-- Config em `.capybara/config.json` dentro do workspace (`~/CapybaraWorkspaces/{nome}/`).
+- Config em `.reverso/config.json` dentro do workspace (`~/ReversoWorkspaces/{nome}/`).
 - Usar electron-store para preferências de app; paths de workspace vêm do fs service.

@@ -1,6 +1,6 @@
 # Guia de Setup — Dia 1: Electron-Vite + React + TypeScript + Tailwind + shadcn/ui
 
-> **Objetivo:** Montar a base do projeto Capybara Agent com electron-vite, React, TypeScript, Tailwind CSS, shadcn/ui, shadcnblocks e fontes IBM Plex.
+> **Objetivo:** Montar a base do projeto Reverso Agent com electron-vite, React, TypeScript, Tailwind CSS, shadcn/ui, shadcnblocks e fontes IBM Plex.
 >
 > **Quem executa:** Você (manualmente no terminal).
 >
@@ -10,20 +10,20 @@
 
 ## Passo 1: Criar o projeto com electron-vite
 
-> **⚠️ IMPORTANTE:** O diretório `~/Developer/Capybara Agent` já contém arquivos do projeto (`.agents/`, `.cursor/`, `.gitignore`, etc.). O scaffold do electron-vite **não pode ser feito diretamente nele** — ao perguntar "Remove existing files and continue?", responder `y` **apagaria tudo**. A solução é criar numa pasta temporária e mover os arquivos.
+> **⚠️ IMPORTANTE:** O diretório `~/Developer/Reverso Agent` já contém arquivos do projeto (`.agents/`, `.cursor/`, `.gitignore`, etc.). O scaffold do electron-vite **não pode ser feito diretamente nele** — ao perguntar "Remove existing files and continue?", responder `y` **apagaria tudo**. A solução é criar numa pasta temporária e mover os arquivos.
 
 ### 1.1: Criar o scaffold numa pasta temporária
 
 ```bash
 cd ~/Developer
-pnpm create @quick-start/electron@latest capybara-agent-tmp
+pnpm create @quick-start/electron@latest reverso-agent-tmp
 ```
 
 ### Escolhas no prompt interativo:
 
 | Pergunta | Resposta |
 |---|---|
-| **Project name:** | `capybara-agent` (ou aceite o default) |
+| **Project name:** | `reverso-agent` (ou aceite o default) |
 | **Select a framework:** | `react` |
 | **Add TypeScript?** | `Yes` |
 | **Add Electron updater plugin?** | `Yes` |
@@ -32,16 +32,16 @@ pnpm create @quick-start/electron@latest capybara-agent-tmp
 ### 1.2: Mover os arquivos do scaffold para o projeto
 
 ```bash
-cp -rn ~/Developer/capybara-agent-tmp/* ~/Developer/Capybara\ Agent/
-cp -rn ~/Developer/capybara-agent-tmp/.* ~/Developer/Capybara\ Agent/ 2>/dev/null
+cp -rn ~/Developer/reverso-agent-tmp/* ~/Developer/Reverso\ Agent/
+cp -rn ~/Developer/reverso-agent-tmp/.* ~/Developer/Reverso\ Agent/ 2>/dev/null
 
 # Verificar que os arquivos-chave chegaram
-ls ~/Developer/Capybara\ Agent/package.json
-ls ~/Developer/Capybara\ Agent/electron.vite.config.ts
-ls ~/Developer/Capybara\ Agent/src/main/index.ts
+ls ~/Developer/Reverso\ Agent/package.json
+ls ~/Developer/Reverso\ Agent/electron.vite.config.ts
+ls ~/Developer/Reverso\ Agent/src/main/index.ts
 
 # Remover a pasta temporária
-rm -rf ~/Developer/capybara-agent-tmp
+rm -rf ~/Developer/reverso-agent-tmp
 ```
 
 > **Nota:** O `cp -rn` usa a flag `-n` (no-clobber) para **não sobrescrever** arquivos que já existem no destino (como `.gitignore`).
@@ -49,7 +49,7 @@ rm -rf ~/Developer/capybara-agent-tmp
 ### 1.3: Verificar que nada foi sobrescrito
 
 ```bash
-cd ~/Developer/Capybara\ Agent
+cd ~/Developer/Reverso\ Agent
 ls -la .agents/
 ls -la .cursor/
 ```
@@ -140,7 +140,7 @@ Substitua o conteúdo de `src/renderer/src/App.tsx`:
 function App(): JSX.Element {
   return (
     <div className="flex items-center justify-center h-screen bg-zinc-900">
-      <h1 className="text-4xl font-bold text-white">Capybara Agent</h1>
+      <h1 className="text-4xl font-bold text-white">Reverso Agent</h1>
     </div>
   )
 }
@@ -152,7 +152,7 @@ export default App
 pnpm dev
 ```
 
-> Deve aparecer "Capybara Agent" em branco centralizado num fundo escuro.
+> Deve aparecer "Reverso Agent" em branco centralizado num fundo escuro.
 
 ---
 
@@ -355,7 +355,7 @@ Substitua **todo o conteúdo** de `src/renderer/src/assets/main.css` por:
 
 > **O que mudou vs. o guia anterior:**
 > - Não depende mais do `shadcn init` — tudo é manual.
-> - O tema Capybara 0 já está embutido diretamente (extraído do tweakcn registry).
+> - O tema Reverso 0 já está embutido diretamente (extraído do tweakcn registry).
 > - O `@theme inline` mapeia as variáveis CSS para classes do Tailwind v4.
 > - Não precisa mais rodar `pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/...`.
 
@@ -412,7 +412,7 @@ import { Button } from '@/components/ui/button'
 function App(): JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-background gap-4">
-      <h1 className="text-4xl font-bold text-foreground">Capybara Agent</h1>
+      <h1 className="text-4xl font-bold text-foreground">Reverso Agent</h1>
       <div className="flex gap-2">
         <Button>Primary</Button>
         <Button variant="secondary">Secondary</Button>
@@ -437,7 +437,7 @@ Adicione a classe `dark` no `src/renderer/index.html` para testar dark mode:
 pnpm dev
 ```
 
-> Os botões devem renderizar com as cores do tema Capybara 0 (roxo primary, ciano secondary, amarelo accent) em dark mode. Se aparecerem com cores corretas e cantos retos (radius 0), o tema está funcionando.
+> Os botões devem renderizar com as cores do tema Reverso 0 (roxo primary, ciano secondary, amarelo accent) em dark mode. Se aparecerem com cores corretas e cantos retos (radius 0), o tema está funcionando.
 
 ---
 
@@ -545,7 +545,7 @@ import { Button } from '@/components/ui/button'
 function App(): JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-background gap-4">
-      <h1 className="text-4xl font-bold text-foreground">Capybara Agent</h1>
+      <h1 className="text-4xl font-bold text-foreground">Reverso Agent</h1>
       <p className="text-muted-foreground">IBM Plex Sans Thai Looped</p>
       <code className="text-lg text-accent font-mono">IBM Plex Mono</code>
       <div className="flex gap-2">
@@ -603,14 +603,15 @@ Se aparecer **"Authentication required for pro blocks"**:
 - Confirme que o nome da variável é exatamente `SHADCNBLOCKS_API_KEY`
 - Rode na mesma sessão: `export $(grep -v '^#' .env.local | xargs)` e depois o comando `pnpm dlx shadcn@latest add ...` de novo
 
-O CLI criará um ou mais arquivos (por exemplo em `src/renderer/src/components/blocks/application-shell-9/` ou em `@/components/` — confira a saída do comando).
+O CLI criará **um arquivo** em `src/renderer/src/components/application-shell9.tsx` (sem pasta `blocks/`, e o nome do arquivo é `application-shell9`, sem hífen antes do 9). Use o import abaixo no Passo 7.3.
 
 ### 7.3: Integrar no App e rodar
 
-Importe o componente principal que o CLI criou (o nome exato pode ser `ApplicationShell9` ou similar) no `App.tsx` e use-o como conteúdo principal. Exemplo (ajuste o caminho conforme a saída do CLI):
+Importe o componente no `App.tsx`. O CLI instala em `@/components/application-shell9` (arquivo único, **não** em `blocks/`):
 
 ```tsx
-import { ApplicationShell9 } from '@/components/blocks/application-shell-9' // ajuste o path se necessário
+import { ApplicationShell9 } from '@/components/application-shell9'
+import type { JSX } from 'react'
 
 function App(): JSX.Element {
   return <ApplicationShell9 />
@@ -619,7 +620,9 @@ function App(): JSX.Element {
 export default App
 ```
 
-Se o bloco tiver sido instalado em outro path (ex.: `@/components/application-shell-9`), use esse path. Em seguida:
+> **Erro comum:** Usar `@/components/blocks/application-shell-9` gera "Failed to resolve import" — o caminho correto é `@/components/application-shell9`.
+
+Em seguida:
 
 ```bash
 pnpm dev
@@ -638,7 +641,7 @@ Use esta lista para confirmar que o Application Shell 9 instalou e está rodando
 - [ ] O layout está em **dark mode** se o `<html>` tiver a classe `dark`.
 - [ ] Não há erros de import ou de componente quebrado no DevTools (Console).
 
-Se todos os itens acima estiverem OK, o Application Shell 9 está instalado e funcionando. Você pode usar esse layout como base para o próximo passo (layout master adaptado ao Capybara no plano agêntico).
+Se todos os itens acima estiverem OK, o Application Shell 9 está instalado e funcionando. Você pode usar esse layout como base para o próximo passo (layout master adaptado ao Reverso no plano agêntico).
 
 ---
 
@@ -648,7 +651,7 @@ Se todos os itens acima estiverem OK, o Application Shell 9 está instalado e fu
 - [ ] Tailwind CSS v4 funciona (classes utilitárias aplicadas)
 - [ ] shadcn/ui instalado manualmente (helper `cn()`, `components.json`, componente `button` funciona)
 - [ ] shadcnblocks configurado como registry em `components.json`
-- [ ] Tema Capybara 0 aplicado (cores OKLCH, cantos retos com `--radius: 0rem`)
+- [ ] Tema Reverso 0 aplicado (cores OKLCH, cantos retos com `--radius: 0rem`)
 - [ ] Dark mode funciona (classe `dark` no `<html>`)
 - [ ] Fontes IBM Plex instaladas e renderizando corretamente
 - [ ] Path alias `@/` resolvendo para `src/renderer/src/`
@@ -673,4 +676,62 @@ Se você já completou os Passos 1-4 do guia anterior com sucesso:
 Após completar este guia (incluindo o Passo 7 e o teste manual do Application Shell 9), o agente continuará com:
 
 1. **Frameless window** com drag regions e macOS traffic lights
-2. **Layout master** adaptado ao Capybara a partir do Application Shell 9 (Activity Bar + Sidebar + Viewer + Chat)
+2. **Layout master** adaptado ao Reverso a partir do Application Shell 9 (Activity Bar + Sidebar + Viewer + Chat)
+
+---
+
+## Resumo do guia — o que foi feito e como o projeto está estruturado
+
+### O que foi feito (ordem dos passos)
+
+1. **Scaffold electron-vite** — Projeto criado em pasta temporária e arquivos copiados para o root (para não apagar `.agents/`, `.cursor/`, etc.).
+2. **Tailwind CSS v4** — Instalado `tailwindcss` e `@tailwindcss/vite`; plugin no `electron.vite.config.ts`; `tsconfig.node.json` com `moduleResolution: "Bundler"`; CSS com `@import "tailwindcss"`.
+3. **Path aliases** — `@/` e `@renderer` em `tsconfig.web.json`, `tsconfig.json` (raiz) e `electron.vite.config.ts`, apontando para `src/renderer/src/`.
+4. **shadcn/ui (manual)** — Dependências instaladas (`shadcn`, `clsx`, `tailwind-merge`, etc.); helper `cn()` em `src/renderer/src/lib/utils.ts`; `components.json` criado; CSS global com tokens do shadcn e tema Reverso 0 (OKLCH); componente `button` adicionado.
+5. **Fontes IBM Plex** — Pacotes `@ibm/plex-sans-thai-looped`, `@ibm/plex-mono`, `@ibm/plex-sans-jp`; `@font-face` no CSS; variáveis `--font-sans` e `--font-mono` no `@theme inline`.
+6. **Application Shell 9** — Registry com API Key em `components.json`; comando `pnpm dlx shadcn@latest add @shadcnblocks/application-shell9`; componente em `src/renderer/src/components/application-shell9.tsx`; import correto: `@/components/application-shell9`.
+
+### Estrutura do projeto após o guia
+
+```
+Reverso Agent/
+├── .env.local                    # SHADCNBLOCKS_API_KEY, etc. (não commitado)
+├── components.json               # Config shadcn + registry @shadcnblocks (com auth para Pro)
+├── electron.vite.config.ts       # Vite: main, preload, renderer (React + Tailwind)
+├── package.json
+├── tsconfig.json                 # Raiz: references + paths para @/*
+├── tsconfig.node.json            # Main/preload: moduleResolution Bundler
+├── tsconfig.web.json             # Renderer: include src/renderer/**/*, jsx, paths
+├── src/
+│   ├── main/
+│   │   └── index.ts              # Entry Electron, BrowserWindow
+│   ├── preload/
+│   │   └── index.ts              # contextBridge
+│   └── renderer/
+│       ├── index.html             # <html class="dark">
+│       └── src/
+│           ├── App.tsx           # Import ApplicationShell9 de @/components/application-shell9
+│           ├── main.tsx           # React root + import do CSS
+│           ├── assets/
+│           │   └── main.css      # Tailwind + tema Reverso 0 + fontes IBM Plex
+│           ├── components/
+│           │   ├── ui/           # shadcn (button, etc.)
+│           │   └── application-shell9.tsx   # Bloco Pro shadcnblocks
+│           └── lib/
+│               └── utils.ts      # cn()
+├── resources/
+└── .agents/ .cursor/             # Preservados do projeto original
+```
+
+O build é feito pelo **Vite** (electron-vite); o `tsconfig.web.json` serve para **type-check e editor**, não para emitir JS.
+
+### Correções de lint aplicadas (para referência)
+
+Estas alterações foram feitas para eliminar erros de TypeScript/ESLint no editor e não afetam o build:
+
+| Arquivo | Alteração |
+|--------|-----------|
+| **tsconfig.web.json** | Incluído `"include": ["src/renderer/**/*"]`, `"jsx": "react-jsx"`, e opções de compilação para o ambiente web (`lib`, `module`, `moduleResolution`, `target`, `strict`, `skipLibCheck`, `noEmit`) para o renderer ser type-checked com suporte a JSX. |
+| **App.tsx** | Uso de `import type { JSX } from 'react'` e retorno `: JSX.Element` para o tipo de retorno (evita "Cannot find namespace 'JSX'"); nova linha no final do arquivo (exigência do ESLint/Prettier). |
+
+O caminho correto do Application Shell 9 no import é **`@/components/application-shell9`** (sem `blocks/`, sem hífen antes do `9`). Usar `@/components/blocks/application-shell-9` gera o erro "Failed to resolve import".

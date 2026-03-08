@@ -1,6 +1,6 @@
-# PRD-04: Chat, Agent & Capybara Markdown
+# PRD-04: Chat, Agent & Reverso Markdown
 
-> **Domínio:** Chat, Agent & Capybara Markdown
+> **Domínio:** Chat, Agent & Reverso Markdown
 > **PRD Master:** `PRD-00-master.md`
 > **Depende de:** Workspace & Infra, Sources, Dossier & Investigations
 > **Consumido por:** — (domínio transversal; é o orquestrador de tudo)
@@ -9,7 +9,7 @@
 
 ## 1. Visão do Domínio
 
-Este é o domínio **transversal** do Capybara Agent. O Chat é o ponto de entrada de toda interação; o Agent é o motor que executa ações; e o Capybara Markdown é o formato unificado que todos os domínios leem e escrevem. Juntos, eles formam a "inteligência" do produto.
+Este é o domínio **transversal** do Reverso Agent. O Chat é o ponto de entrada de toda interação; o Agent é o motor que executa ações; e o Reverso Markdown é o formato unificado que todos os domínios leem e escrevem. Juntos, eles formam a "inteligência" do produto.
 
 ---
 
@@ -26,7 +26,7 @@ Este é o domínio **transversal** do Capybara Agent. O Chat é o ponto de entra
 6. **Como** agente AI, **quero** ter ferramentas (tools) para ler, escrever e organizar o workspace **para** executar tarefas investigativas autonomamente.
 7. **Como** agente AI, **quero** planejar antes de executar (Planning Mode) **para** que o jornalista aprove minhas ações antes.
 
-### Capybara Markdown
+### Reverso Markdown
 8. **Como** jornalista, **quero** ver documentos Markdown renderizados com tipografia bonita e blocos especiais (annotations, clues, events) **para** ler de forma confortável.
 
 ---
@@ -42,7 +42,7 @@ Este é o domínio **transversal** do Capybara Agent. O Chat é o ponto de entra
 │                                                          │
 │  [Message area com streaming]                            │
 │                                                          │
-│  🤖 Capybara:                                           │
+│  🤖 Reverso:                                           │
 │  "Encontrei 3 contratos mencionando Construtora XYZ..."  │
 │                                                          │
 │  [📄 metadata.md criado → contrato-01]          [abrir]  │
@@ -530,7 +530,7 @@ const createPlan = tool({
 ### 4.3 System Prompt do Agente
 
 ```markdown
-You are Capybara, an AI investigative journalism assistant.
+You are Reverso, an AI investigative journalism assistant.
 You help journalists process documents, organize information
 into dossiers, and develop investigative hypotheses.
 
@@ -563,7 +563,7 @@ into dossiers, and develop investigative hypotheses.
 
 ---
 
-## 5. Capybara Markdown — Dialeto e Renderer
+## 5. Reverso Markdown — Dialeto e Renderer
 
 ### 5.1 Stack do Renderer
 
@@ -711,7 +711,7 @@ function renderMarkdownFile(filePath: string, rawContent: string) {
         updated={frontmatter.updated}
         icon={getIconForType(frontmatter.type)}
       />
-      <CapybaraMarkdown content={content} />
+      <ReversoMarkdown content={content} />
       {shouldShowConnections(frontmatter.type) && (
         <ConnectionsBlock filePath={filePath} />
       )}
@@ -738,7 +738,7 @@ function renderMarkdownFile(filePath: string, rawContent: string) {
 
 ### 5.5 Estilização
 
-O renderer usa classes Tailwind + tokens do tema Capybara 0:
+O renderer usa classes Tailwind + tokens do tema Reverso 0:
 
 - Tipografia: `font-sans` (IBM Plex Sans Thai)
 - Code blocks: `font-mono` (IBM Plex Mono)

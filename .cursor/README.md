@@ -1,4 +1,4 @@
-# Configuração do Cursor (Capybara Agent)
+# Configuração do Cursor (Reverso Agent)
 
 Toda a **configuração do agente** e do workflow no Cursor fica aqui: skills, comandos e rules.
 
@@ -39,7 +39,7 @@ Comandos são acionados pelo usuário (argumento opcional em `$ARGUMENTS`).
 
 ## Rules (`rules/`)
 
-Regras em `.mdc` orientam o agente de forma persistente (ex.: `capybara-agent-inspiration.mdc` — manifesto de projetos de inspiração e critérios de decisão).
+Regras em `.mdc` orientam o agente de forma persistente (ex.: `reverso-agent-inspiration.mdc` — manifesto de projetos de inspiração e critérios de decisão).
 
 ## Onde ficam os dados do projeto?
 

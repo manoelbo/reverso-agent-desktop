@@ -1,10 +1,10 @@
 ---
-description: Dialeto Capybara Markdown — diretivas, wikilinks, source refs, frontmatter, componentes de render
+description: Dialeto Reverso Markdown — diretivas, wikilinks, source refs, frontmatter, componentes de render
 globs: "src/renderer/**/*markdown*,src/renderer/**/*md*,src/shared/**/*markdown*"
 alwaysApply: false
 ---
 
-# Capybara Markdown
+# Reverso Markdown
 
 ## Renderer (React)
 
