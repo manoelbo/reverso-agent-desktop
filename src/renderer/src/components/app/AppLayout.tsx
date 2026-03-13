@@ -82,16 +82,14 @@ export function AppLayout({
     setActiveView(view)
     setDossierFilter(null)
     setDossierFilterVersion((value) => value + 1)
-    const isDossierView = view === "dossier-people" || view === "dossier-groups" || view === "dossier-places" || view === "dossier-timeline"
-    if (!isDossierView) {
-      setSelectedDossierDocument(null)
-    }
+    setSelectedDossierDocument(null)
   }
 
   const handleSelectDossierFilter = (filter: DossierViewFilter): void => {
     setActiveView(filter.view)
     setDossierFilter(filter)
     setDossierFilterVersion((value) => value + 1)
+    setSelectedDossierDocument(null)
   }
 
   const handleOpenDossierDocument = (relativePath: string, source: SelectedDossierDocument["source"] = "sidebar"): void => {

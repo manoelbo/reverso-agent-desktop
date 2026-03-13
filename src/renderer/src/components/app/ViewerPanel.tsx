@@ -188,7 +188,6 @@ export function ViewerPanel({
           <SourceViewPanel />
         ) : activeView === "dossier-people" ? (
           <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
-            <PeopleViewPanel dossierIndex={dossierIndex} onOpenDossierDocument={onOpenDossierDocument} />
             {selectedDossierDocument ? (
               <DossierMarkdownDocumentPanel
                 selectedDocument={selectedDossierDocument}
@@ -197,15 +196,27 @@ export function ViewerPanel({
                 onOpenDocument={onOpenDossierDocumentFromWikiLink}
               />
             ) : null}
+            <PeopleViewPanel dossierIndex={dossierIndex} onOpenDossierDocument={onOpenDossierDocument} />
           </div>
         ) : activeView === "dossier-groups" ? (
           <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+            {selectedDossierDocument ? (
+              <DossierMarkdownDocumentPanel
+                selectedDocument={selectedDossierDocument}
+                dossierIndex={dossierIndex}
+                onClose={onCloseDossierDocument}
+                onOpenDocument={onOpenDossierDocumentFromWikiLink}
+              />
+            ) : null}
             <GroupsViewPanel
               dossierIndex={dossierIndex}
               onOpenDossierDocument={onOpenDossierDocument}
               presetCategory={dossierFilter?.view === "dossier-groups" ? dossierFilter.category : undefined}
               presetVersion={dossierFilterVersion}
             />
+          </div>
+        ) : activeView === "dossier-places" ? (
+          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
             {selectedDossierDocument ? (
               <DossierMarkdownDocumentPanel
                 selectedDocument={selectedDossierDocument}
@@ -214,9 +225,6 @@ export function ViewerPanel({
                 onOpenDocument={onOpenDossierDocumentFromWikiLink}
               />
             ) : null}
-          </div>
-        ) : activeView === "dossier-places" ? (
-          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
             <PlacesViewPanel
               dossierIndex={dossierIndex}
               onOpenDossierDocument={onOpenDossierDocument}
@@ -231,6 +239,9 @@ export function ViewerPanel({
               }
               presetVersion={dossierFilterVersion}
             />
+          </div>
+        ) : activeView === "dossier-timeline" ? (
+          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
             {selectedDossierDocument ? (
               <DossierMarkdownDocumentPanel
                 selectedDocument={selectedDossierDocument}
@@ -239,9 +250,6 @@ export function ViewerPanel({
                 onOpenDocument={onOpenDossierDocumentFromWikiLink}
               />
             ) : null}
-          </div>
-        ) : activeView === "dossier-timeline" ? (
-          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
             <TimelineViewPanel
               dossierIndex={dossierIndex}
               onOpenDossierDocument={onOpenDossierDocument}
@@ -255,14 +263,6 @@ export function ViewerPanel({
               }
               presetVersion={dossierFilterVersion}
             />
-            {selectedDossierDocument ? (
-              <DossierMarkdownDocumentPanel
-                selectedDocument={selectedDossierDocument}
-                dossierIndex={dossierIndex}
-                onClose={onCloseDossierDocument}
-                onOpenDocument={onOpenDossierDocumentFromWikiLink}
-              />
-            ) : null}
           </div>
         ) : (
           <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6 px-6 py-8">
