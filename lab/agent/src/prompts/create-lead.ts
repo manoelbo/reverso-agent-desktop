@@ -2,25 +2,30 @@
  * Prompt para o comando create-lead: IA retorna APENAS planejamento do lead.
  */
 
-export function buildCreateLeadSystemPrompt(toolManifest: string): string {
+export function buildCreateLeadSystemPrompt(
+  toolManifest: string,
+  responseLanguageInstruction = ''
+): string {
   return `
-Voce e um assistente de jornalismo investigativo. Sua tarefa e montar um "lead" de investigacao com plano de inquiry.
-Este comando NAO deve produzir allegations e findings agora. Isso sera feito depois no comando /inquiry.
+You are an investigative journalism assistant. Your task is to create an investigation lead with an inquiry plan.
+This command MUST NOT produce allegations or findings now. Those are generated later by /inquiry.
 
 ${toolManifest}
 
-Regras obrigatorias:
-- O Inquiry Plan deve seguir exatamente 4 etapas:
-  1) Formular Allegations
+Mandatory rules:
+- Inquiry Plan must follow exactly these 4 stages:
+  1) Formulate Allegations
   2) Define Search Strategy
   3) Gather Findings
   4) Map to Allegations
-- Priorize rastreabilidade e passos concretos sobre orientacoes vagas.
-- Evite inventar dados nao sustentados nos documentos.
+- Prioritize traceability and concrete steps over vague guidance.
+- Do not invent data not supported by documents.
 
-Retorne APENAS um JSON valido, sem markdown nem texto antes/depois, no formato:
+${responseLanguageInstruction}
+
+Return ONLY valid JSON, with no markdown and no text before/after, in this format:
 {
-  "codename": "string (slug-friendly, ex: taludes-instabilidade)",
+  "codename": "string (slug-friendly, e.g., slope-instability)",
   "title": "string",
   "description": "string",
   "inquiryPlan": {
@@ -35,26 +40,26 @@ Retorne APENAS um JSON valido, sem markdown nem texto antes/depois, no formato:
 
 export function buildCreateLeadUserPrompt(idea?: string, sourceSummary?: string): string {
   const sourceBlock = sourceSummary?.trim()
-    ? `Documentos/sources disponiveis para esta investigacao:\n${sourceSummary.trim()}\n\nUse essa lista para sugerir passos que envolvam documentos especificos quando fizer sentido.\n`
+    ? `Available sources for this investigation:\n${sourceSummary.trim()}\n\nUse this list to suggest steps that reference specific documents when relevant.\n`
     : ''
 
   if (idea?.trim()) {
     return `
-Crie um lead de investigacao a partir da seguinte ideia/nome: "${idea.trim()}"
+Create an investigation lead based on this idea/name: "${idea.trim()}"
 
 ${sourceBlock}
 
-Preencha codename, title, description e inquiryPlan (4 etapas).
-Retorne apenas o JSON.
+Fill codename, title, description, and inquiryPlan (4 stages).
+Return JSON only.
 `.trim()
   }
   return `
-Crie um lead de investigacao generico com base em temas comuns de apuracao (contratos publicos, pessoas, empresas, valores, prazos).
+Create a generic investigation lead based on common reporting themes (public contracts, people, companies, values, deadlines).
 
 ${sourceBlock}
 
-Preencha codename, title, description e inquiryPlan (4 etapas).
-Retorne apenas o JSON.
+Fill codename, title, description, and inquiryPlan (4 stages).
+Return JSON only.
 `.trim()
 }
 

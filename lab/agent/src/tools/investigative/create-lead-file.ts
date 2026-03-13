@@ -27,7 +27,9 @@ export interface CreateLeadFileInput {
   slug: string
   title: string
   description: string
-  inquiryPlan: InquiryPlan
+  language?: string
+  inquiryPlan?: InquiryPlan
+  status?: 'draft' | 'planned'
   allegations?: LeadAllegationInput[]
   findings?: LeadFindingInput[]
 }
@@ -42,12 +44,23 @@ export interface AppendLeadConclusionInput {
   slug: string
   scenario: InquiryScenario
   conclusion: string
+  language?: string
+  audit?: InquiryAuditMetadata
 }
 
 export interface PersistInquiryArtifactsInput {
   slug: string
   allegations: LeadAllegationInput[]
   findings: LeadFindingInput[]
+  reviewQueue?: LeadFindingInput[]
+  language?: string
+  audit?: InquiryAuditMetadata
+}
+
+export interface InquiryAuditMetadata {
+  criticalWriteGate: 'approved' | 'blocked' | 'bypassed'
+  needsRepair: boolean
+  repairReasons?: string[]
 }
 
 function normalizeAllegationId(raw: string, idx: number): string {
@@ -60,11 +73,22 @@ function normalizeFindingId(raw: string, idx: number): string {
   return base.startsWith('finding-') ? base : `finding-${base}`
 }
 
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  const result: T[] = []
+  for (const item of items) {
+    if (seen.has(item.id)) continue
+    seen.add(item.id)
+    result.push(item)
+  }
+  return result
+}
+
 function renderInquiryPlanSection(inquiryPlan: InquiryPlan): string {
   return [
     '## Inquiry Plan',
     '',
-    '### 1. Formular Allegations',
+    '### 1. Formulate Allegations',
     ...inquiryPlan.formulateAllegations.map((item) => `- ${item}`),
     '',
     '### 2. Define Search Strategy',
@@ -78,6 +102,91 @@ function renderInquiryPlanSection(inquiryPlan: InquiryPlan): string {
   ].join('\n')
 }
 
+function parseFrontmatter(content: string): { frontmatter: Record<string, string>; body: string } {
+  if (!content.startsWith('---\n')) {
+    return { frontmatter: {}, body: content }
+  }
+  const end = content.indexOf('\n---\n', 4)
+  if (end === -1) {
+    return { frontmatter: {}, body: content }
+  }
+  const raw = content.slice(4, end).split('\n')
+  const frontmatter: Record<string, string> = {}
+  for (const line of raw) {
+    const sep = line.indexOf(':')
+    if (sep <= 0) continue
+    const key = line.slice(0, sep).trim()
+    const value = line.slice(sep + 1).trim().replace(/^"|"$/g, '')
+    if (!key) continue
+    frontmatter[key] = value
+  }
+  return {
+    frontmatter,
+    body: content.slice(end + '\n---\n'.length)
+  }
+}
+
+function getLeadLabels(language?: string): {
+  contextTitle: string
+  allegationsIndexTitle: string
+  findingsIndexTitle: string
+  fillLaterText: string
+  linkedFindingsTitle: string
+  noLinkedFindings: string
+  statusLabel: string
+  evidenceTitle: string
+  evidenceMissing: string
+  evidenceReviewQueueTitle: string
+  evidenceReviewQueueEmpty: string
+  relatedAllegationsTitle: string
+  noRelatedAllegations: string
+  conclusionTitle: string
+  scenarioPositive: string
+  scenarioNegative: string
+  scenarioPlanAnother: string
+} {
+  if (language === 'pt') {
+    return {
+      contextTitle: 'Contexto',
+      allegationsIndexTitle: 'Índice de Allegations',
+      findingsIndexTitle: 'Índice de Findings',
+      fillLaterText: '(preenchido depois por /inquiry)',
+      linkedFindingsTitle: 'Findings vinculados',
+      noLinkedFindings: 'nenhum finding vinculado',
+      statusLabel: 'Status',
+      evidenceTitle: 'Evidências',
+      evidenceMissing: 'não informado',
+      evidenceReviewQueueTitle: 'Fila de revisão de evidências',
+      evidenceReviewQueueEmpty: 'sem pendências de revisão',
+      relatedAllegationsTitle: 'Allegations relacionadas',
+      noRelatedAllegations: 'nenhuma allegation relacionada',
+      conclusionTitle: 'Conclusão',
+      scenarioPositive: 'Cenário 1 (Positivo)',
+      scenarioNegative: 'Cenário 2 (Negativo)',
+      scenarioPlanAnother: 'Cenário 3 (Planejar nova inquiry)'
+    }
+  }
+  return {
+    contextTitle: 'Context',
+    allegationsIndexTitle: 'Allegations Index',
+    findingsIndexTitle: 'Findings Index',
+    fillLaterText: '(filled later by /inquiry)',
+    linkedFindingsTitle: 'Linked findings',
+    noLinkedFindings: 'no linked findings',
+    statusLabel: 'Status',
+    evidenceTitle: 'Evidence',
+    evidenceMissing: 'not provided',
+    evidenceReviewQueueTitle: 'Evidence review queue',
+    evidenceReviewQueueEmpty: 'no review backlog',
+    relatedAllegationsTitle: 'Related allegations',
+    noRelatedAllegations: 'no related allegations',
+    conclusionTitle: 'Conclusion',
+    scenarioPositive: 'Scenario 1 (Positive)',
+    scenarioNegative: 'Scenario 2 (Negative)',
+    scenarioPlanAnother: 'Scenario 3 (Plan Another Inquiry)'
+  }
+}
+
 function statusSummary(
   findings: Array<{ status: VerificationStatus; allegationIds: string[] }>,
   allegationId: string
@@ -89,6 +198,21 @@ function statusSummary(
   return `verified:${verified}, unverified:${unverified}, rejected:${rejected}`
 }
 
+function formatEvidenceLocation(evidence: FindingEvidence): string {
+  const location = evidence.location
+  if (location.kind === 'pdf') {
+    const page = typeof location.page === 'number' ? `p.${location.page}` : 'p.?'
+    const block = location.block ? ` ${location.block}` : ''
+    return `${page}${block}`.trim()
+  }
+  if (location.kind === 'text') {
+    const lineStart = typeof location.lineStart === 'number' ? location.lineStart : '?'
+    const lineEnd = typeof location.lineEnd === 'number' ? location.lineEnd : lineStart
+    return `lines ${lineStart}-${lineEnd}`
+  }
+  return location.hint ? `unknown (${location.hint})` : 'unknown'
+}
+
 export async function createLeadFile(
   input: CreateLeadFileInput,
   ctx: ToolContext
@@ -98,6 +222,7 @@ export async function createLeadFile(
   await ensureDir(ctx.paths.allegationsDir)
   await ensureDir(ctx.paths.findingsDir)
 
+  const labels = getLeadLabels(input.language)
   const normalizedAllegations = (input.allegations ?? []).map((item, idx) => ({
     id: normalizeAllegationId(item.id, idx),
     statement: item.statement
@@ -111,31 +236,33 @@ export async function createLeadFile(
   }))
 
   const leadPath = path.join(ctx.paths.leadsDir, `lead-${input.slug}.md`)
+  const status = input.status ?? 'planned'
+  const inquiryPlanSection = input.inquiryPlan ? renderInquiryPlanSection(input.inquiryPlan) : undefined
 
   const leadContent = [
     formatFrontmatter({
       type: 'lead',
       slug: `lead-${input.slug}`,
       title: input.title,
+      status,
       created_at: new Date().toISOString(),
       allegations_count: normalizedAllegations.length,
       findings_count: normalizedFindings.length
     }),
     '',
-    '# Contexto',
+    `# ${labels.contextTitle}`,
     input.description,
+    ...(inquiryPlanSection ? ['', inquiryPlanSection] : []),
     '',
-    renderInquiryPlanSection(input.inquiryPlan),
-    '',
-    '## Allegations Index',
+    `## ${labels.allegationsIndexTitle}`,
       ...(normalizedAllegations.length
         ? normalizedAllegations.map((item) => `- [[${item.id}]]`)
-        : ['- (sera preenchido pelo comando /inquiry)']),
+        : [`- ${labels.fillLaterText}`]),
     '',
-    '## Findings Index',
+    `## ${labels.findingsIndexTitle}`,
       ...(normalizedFindings.length
         ? normalizedFindings.map((item) => `- [[${item.id}]]`)
-        : ['- (sera preenchido pelo comando /inquiry)']),
+        : [`- ${labels.fillLaterText}`]),
     ''
   ].join('\n')
   await writeUtf8(leadPath, leadContent)
@@ -148,7 +275,8 @@ export async function createLeadFile(
       {
         slug: input.slug,
         allegations: input.allegations ?? [],
-        findings: input.findings ?? []
+        findings: input.findings ?? [],
+        ...(input.language ? { language: input.language } : {})
       },
       ctx
     )
@@ -159,21 +287,69 @@ export async function createLeadFile(
   return { leadPath, allegationPaths, findingPaths }
 }
 
+export async function updateLeadPlanAndStatus(
+  input: {
+    slug: string
+    inquiryPlan: InquiryPlan
+    language?: string
+    status?: 'draft' | 'planned'
+  },
+  ctx: ToolContext
+): Promise<string> {
+  const labels = getLeadLabels(input.language)
+  const leadPath = path.join(ctx.paths.leadsDir, `lead-${input.slug}.md`)
+  const current = await readFile(leadPath, 'utf8')
+  const parsed = parseFrontmatter(current)
+  const updatedFrontmatter = {
+    ...parsed.frontmatter,
+    type: parsed.frontmatter.type || 'lead',
+    slug: parsed.frontmatter.slug || `lead-${input.slug}`,
+    title: parsed.frontmatter.title || input.slug,
+    status: input.status ?? 'planned',
+    updated_at: new Date().toISOString()
+  }
+
+  const planSection = renderInquiryPlanSection(input.inquiryPlan)
+  const planRegex = /## Inquiry Plan[\s\S]*?(?=\n## |\s*$)/m
+  const body = parsed.body
+  const withPlan = body.match(planRegex)
+    ? body.replace(planRegex, planSection)
+    : `${body.trimEnd()}\n\n${planSection}\n`
+  const withIndexes = ensureLeadIndexes(withPlan, labels)
+  const finalContent = `${formatFrontmatter(updatedFrontmatter)}\n\n${withIndexes.trimStart()}`
+  await writeUtf8(leadPath, `${finalContent.trimEnd()}\n`)
+  return leadPath
+}
+
+function ensureLeadIndexes(body: string, labels: ReturnType<typeof getLeadLabels>): string {
+  const allegationsHeader = `## ${labels.allegationsIndexTitle}`
+  const findingsHeader = `## ${labels.findingsIndexTitle}`
+  let output = body
+  if (!output.includes(allegationsHeader)) {
+    output = `${output.trimEnd()}\n\n${allegationsHeader}\n- ${labels.fillLaterText}\n`
+  }
+  if (!output.includes(findingsHeader)) {
+    output = `${output.trimEnd()}\n\n${findingsHeader}\n- ${labels.fillLaterText}\n`
+  }
+  return output
+}
+
 export async function persistInquiryArtifacts(
   input: PersistInquiryArtifactsInput,
   ctx: ToolContext
-): Promise<{ allegationPaths: string[]; findingPaths: string[] }> {
-  const normalizedAllegations = input.allegations.map((item, idx) => ({
+): Promise<{ allegationPaths: string[]; findingPaths: string[]; reviewPath?: string }> {
+  const labels = getLeadLabels(input.language)
+  const normalizedAllegations = dedupeById(input.allegations.map((item, idx) => ({
     id: normalizeAllegationId(item.id, idx),
     statement: item.statement
-  }))
-  const normalizedFindings = input.findings.map((item, idx) => ({
+  })))
+  const normalizedFindings = dedupeById(input.findings.map((item, idx) => ({
     id: normalizeFindingId(item.id, idx),
     claim: item.claim,
     evidence: item.evidence,
     status: item.status,
     allegationIds: item.supportsAllegationIds.map((v) => normalizeAllegationId(v, idx))
-  }))
+  })))
 
   const allegationPaths: string[] = []
   for (const allegation of normalizedAllegations) {
@@ -188,13 +364,16 @@ export async function persistInquiryArtifacts(
         lead_slug: `lead-${input.slug}`,
         statement: allegation.statement,
         finding_ids: findingIds,
-        status_summary: statusSummary(normalizedFindings, allegation.id)
+        status_summary: statusSummary(normalizedFindings, allegation.id),
+        critical_write_gate: input.audit?.criticalWriteGate ?? 'approved',
+        needs_repair: input.audit?.needsRepair ?? false,
+        repair_reasons: (input.audit?.repairReasons ?? []).join(' | ')
       }),
       '',
       `# ${allegation.statement}`,
       '',
-      '## Findings vinculados',
-      ...(findingIds.length ? findingIds.map((id) => `- [[${id}]]`) : ['- nenhum finding vinculado']),
+      `## ${labels.linkedFindingsTitle}`,
+      ...(findingIds.length ? findingIds.map((id) => `- [[${id}]]`) : [`- ${labels.noLinkedFindings}`]),
       ''
     ].join('\n')
     await writeUtf8(filePath, body)
@@ -215,56 +394,110 @@ export async function persistInquiryArtifacts(
         claim: finding.claim,
         status: finding.status,
         allegation_ids: linkedAllegations,
+        critical_write_gate: input.audit?.criticalWriteGate ?? 'approved',
+        needs_repair: input.audit?.needsRepair ?? false,
+        repair_reasons: (input.audit?.repairReasons ?? []).join(' | '),
         evidence: finding.evidence.map((item) => {
-          const page = typeof item.page === 'number' ? ` p.${item.page}` : ''
-          return `${item.source}${page}: ${item.excerpt}`
+          return `${item.source_id} [${item.verification_status}] (${formatEvidenceLocation(item)}): ${item.excerpt}`
         })
       }),
       '',
       `# ${finding.claim}`,
       '',
-      `Status: ${finding.status}`,
+      `${labels.statusLabel}: ${finding.status}`,
       '',
-      '## Evidence',
+      `## ${labels.evidenceTitle}`,
       ...(finding.evidence.length
         ? finding.evidence.map((item) => {
-            const page = typeof item.page === 'number' ? ` p.${item.page}` : ''
-            return `- ${item.source}${page}: "${item.excerpt}"`
+            const confidence = item.confidence.toFixed(2)
+            return `- [${item.verification_status}] ${item.source_id} (${formatEvidenceLocation(item)}, confidence ${confidence}): "${item.excerpt}"`
           })
-        : ['- nao informado']),
+        : [`- ${labels.evidenceMissing}`]),
       '',
-      '## Allegations relacionadas',
+      `## ${labels.relatedAllegationsTitle}`,
       ...(linkedAllegations.length
         ? linkedAllegations.map((id) => `- [[${id}]]`)
-        : ['- nenhuma allegation relacionada']),
+        : [`- ${labels.noRelatedAllegations}`]),
       ''
     ].join('\n')
     await writeUtf8(filePath, body)
     findingPaths.push(filePath)
   }
 
-  await upsertLeadIndexes(input.slug, normalizedAllegations.map((a) => a.id), normalizedFindings.map((f) => f.id), ctx)
-  return { allegationPaths, findingPaths }
+  await upsertLeadIndexes(
+    input.slug,
+    normalizedAllegations.map((a) => a.id),
+    normalizedFindings.map((f) => f.id),
+    ctx,
+    input.language
+  )
+  let reviewPath: string | undefined
+  if (Array.isArray(input.reviewQueue) && input.reviewQueue.length > 0) {
+    reviewPath = path.join(ctx.paths.leadsDir, `lead-${input.slug}.evidence-review.md`)
+    const reviewBody = [
+      formatFrontmatter({
+        type: 'evidence_review_queue',
+        lead_slug: `lead-${input.slug}`,
+        pending_findings: input.reviewQueue.length,
+        created_at: new Date().toISOString(),
+        critical_write_gate: input.audit?.criticalWriteGate ?? 'approved',
+        needs_repair: input.audit?.needsRepair ?? false,
+        repair_reasons: (input.audit?.repairReasons ?? []).join(' | ')
+      }),
+      '',
+      `# ${labels.evidenceReviewQueueTitle}`,
+      '',
+      ...input.reviewQueue.map((finding) => {
+        const evidenceLines = finding.evidence.map((item) => {
+          const confidence = item.confidence.toFixed(2)
+          return `  - [${item.verification_status}] ${item.source_id} (${formatEvidenceLocation(item)}, confidence ${confidence}) — "${item.excerpt}"`
+        })
+        return [`- ${finding.id}: ${finding.claim}`, ...evidenceLines].join('\n')
+      }),
+      ''
+    ].join('\n')
+    await writeUtf8(reviewPath, reviewBody)
+  }
+  return { allegationPaths, findingPaths, ...(reviewPath ? { reviewPath } : {}) }
 }
 
 export async function appendLeadConclusion(
   input: AppendLeadConclusionInput,
   ctx: ToolContext
 ): Promise<string> {
+  const labels = getLeadLabels(input.language)
   const leadPath = path.join(ctx.paths.leadsDir, `lead-${input.slug}.md`)
   const current = await readFile(leadPath, 'utf8')
   const scenarioLabel =
     input.scenario === 'positive'
-      ? 'Cenario 1 (Positiva)'
+      ? labels.scenarioPositive
       : input.scenario === 'negative'
-        ? 'Cenario 2 (Negativa)'
-        : 'Cenario 3 (Plan Another Inquiry)'
-  const marker = '# Conclusion'
-  const block = [marker, '', `Scenario: ${scenarioLabel}`, '', input.conclusion.trim(), ''].join('\n')
+        ? labels.scenarioNegative
+        : labels.scenarioPlanAnother
+  const marker = `# ${labels.conclusionTitle}`
+  const auditLines = input.audit
+    ? [
+        '',
+        '## Inquiry Audit',
+        `- critical_write_gate: ${input.audit.criticalWriteGate}`,
+        `- needs_repair: ${input.audit.needsRepair ? 'true' : 'false'}`,
+        `- repair_reasons: ${(input.audit.repairReasons ?? []).join(' | ') || 'none'}`
+      ]
+    : []
+  const block = [
+    marker,
+    '',
+    `Scenario: ${scenarioLabel}`,
+    '',
+    input.conclusion.trim(),
+    ...auditLines,
+    ''
+  ].join('\n')
+  const markerRegex = new RegExp(`${marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[\\s\\S]*$`, 'm')
   const updated = current.includes(marker)
     ? current.replace(
-        /# Conclusion[\s\S]*$/m,
-        `${marker}\n\nScenario: ${scenarioLabel}\n\n${input.conclusion.trim()}\n`
+        markerRegex,
+        `${marker}\n\nScenario: ${scenarioLabel}\n\n${input.conclusion.trim()}${auditLines.join('\n')}\n`
       )
     : `${current.trimEnd()}\n\n${block}\n`
   await writeUtf8(leadPath, updated)
@@ -275,27 +508,39 @@ async function upsertLeadIndexes(
   slug: string,
   allegationIds: string[],
   findingIds: string[],
-  ctx: ToolContext
+  ctx: ToolContext,
+  language?: string
 ): Promise<void> {
   const leadPath = path.join(ctx.paths.leadsDir, `lead-${slug}.md`)
   const current = await readFile(leadPath, 'utf8')
+  const labels = getLeadLabels(language)
   const allegationsSection = [
-    '## Allegations Index',
-    ...(allegationIds.length ? allegationIds.map((id) => `- [[${id}]]`) : ['- (a preencher por /inquiry)']),
+    `## ${labels.allegationsIndexTitle}`,
+    ...(allegationIds.length
+      ? allegationIds.map((id) => `- [[${id}]]`)
+      : [`- ${labels.fillLaterText}`]),
     ''
   ].join('\n')
   const findingsSection = [
-    '## Findings Index',
-    ...(findingIds.length ? findingIds.map((id) => `- [[${id}]]`) : ['- (a preencher por /inquiry)']),
+    `## ${labels.findingsIndexTitle}`,
+    ...(findingIds.length
+      ? findingIds.map((id) => `- [[${id}]]`)
+      : [`- ${labels.fillLaterText}`]),
     ''
   ].join('\n')
 
-  const withAllegations = current.match(/## Allegations Index[\s\S]*?(?=\n## |\s*$)/)
-    ? current.replace(/## Allegations Index[\s\S]*?(?=\n## |\s*$)/, allegationsSection.trimEnd())
+  const allegationsRegex = new RegExp(
+    `${`## ${labels.allegationsIndexTitle}`.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[\\s\\S]*?(?=\\n## |\\s*$)`
+  )
+  const findingsRegex = new RegExp(
+    `${`## ${labels.findingsIndexTitle}`.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[\\s\\S]*?(?=\\n## |\\s*$)`
+  )
+  const withAllegations = current.match(allegationsRegex)
+    ? current.replace(allegationsRegex, allegationsSection.trimEnd())
     : `${current.trimEnd()}\n\n${allegationsSection}`
 
-  const withFindings = withAllegations.match(/## Findings Index[\s\S]*?(?=\n## |\s*$)/)
-    ? withAllegations.replace(/## Findings Index[\s\S]*?(?=\n## |\s*$)/, findingsSection.trimEnd())
+  const withFindings = withAllegations.match(findingsRegex)
+    ? withAllegations.replace(findingsRegex, findingsSection.trimEnd())
     : `${withAllegations.trimEnd()}\n\n${findingsSection}`
 
   await writeUtf8(leadPath, `${withFindings.trimEnd()}\n`)

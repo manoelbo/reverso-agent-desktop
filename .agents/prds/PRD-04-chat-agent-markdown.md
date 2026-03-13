@@ -11,6 +11,24 @@
 
 Este é o domínio **transversal** do Reverso Agent. O Chat é o ponto de entrada de toda interação; o Agent é o motor que executa ações; e o Reverso Markdown é o formato unificado que todos os domínios leem e escrevem. Juntos, eles formam a "inteligência" do produto.
 
+## 1.1 Estado Real (Mar/2026)
+
+### Implementado agora (núcleo operacional)
+- Superfície conversacional no Agent Lab CLI: `agent --text/--prompt` e fallback raiz `--text/--prompt`.
+- Roteamento stateful por intenção, sessão e estado de leads.
+- Fluxo `deep-dive` + `deep-dive-next` com decisões em linguagem natural.
+- `create-lead` e `inquiry` com contratos JSON estritos e self-repair.
+- Inquiry com `plan -> execute -> verify`, evidence gate e pre-write validation.
+
+### Pendente para fechar no app (renderer)
+- Chat panel conectado ao runtime real do agente (streaming e tools em produção).
+- Ação contextual do app disparando execução real do fluxo investigativo (não apenas placeholders).
+- Paridade completa entre UX do app e capacidades já existentes no Agent Lab.
+
+### Legado / Transição
+- Este PRD ainda contém trechos aspiracionais do primeiro desenho do produto.
+- Quando houver conflito, considerar como fonte de verdade o estado implementado em `lab/agent/src/**` e os testes em `lab/agent/tests/**`.
+
 ---
 
 ## 2. User Stories
@@ -62,7 +80,7 @@ Este é o domínio **transversal** do Reverso Agent. O Chat é o ponto de entrad
 
 ### 3.2 Componentes do Chat
 
-#### Mode Toggle (Q/P/A)
+#### Mode Toggle (Ask/Plan/Agent)
 
 ```typescript
 type ChatMode = 'question' | 'planning' | 'agent'
@@ -254,7 +272,9 @@ Inspirado em Claude Code / Codex: recebe tarefa → planeja → seleciona ferram
                     └──────────────┘
 ```
 
-### 4.2 Ferramentas do Agente (Tools)
+### 4.2 Ferramentas do Agente (Tools) — alvo histórico
+
+> Seção mantida como referência de direção original. O conjunto efetivamente implementado hoje está no registry de `lab/agent/src/core/tool-registry.ts` e no fluxo de inquiry.
 
 Implementadas como tools OpenAI-compatible (function calling):
 
@@ -783,7 +803,9 @@ interface ViewerStore {
 
 ---
 
-## 7. Chat-First Principle
+## 7. Chat-First Principle (alvo de UX no app)
+
+> No estado atual, esse princípio está parcialmente implementado no renderer. O fluxo mais completo de orquestração conversacional está no Agent Lab CLI.
 
 O chat opera sob o **Chat-First Principle** (detalhado em `PRD-05-ui-interaction-screens.md` §5): nenhum botão no app executa ações diretamente. Todos os botões injetam comandos pré-preenchidos no chat input, permitindo ao usuário adicionar contexto antes de executar.
 

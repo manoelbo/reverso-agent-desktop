@@ -34,3 +34,4 @@ alwaysApply: false
 ## Estilo
 
 - Tema e componentes de UI conforme rule `ui-design-system.mdc`; Markdown conforme `reverso-markdown.mdc`.
+- Para mudanças relevantes de UI no renderer, preferir fluxo Storybook-first (variações e validação antes da integração final).

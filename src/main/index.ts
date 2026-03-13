@@ -2,18 +2,32 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { registerDossierIpc } from './workspace/dossier-ipc'
+
+let cleanupDossierIpc: (() => void) | null = null
 
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1440,
+    height: 900,
+    minWidth: 1024,
+    minHeight: 600,
     show: false,
     autoHideMenuBar: true,
+    backgroundColor: '#09090b',
     ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hiddenInset',
+          trafficLightPosition: { x: 12, y: 12 },
+        }
+      : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
     }
   })
 
@@ -33,6 +47,20 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  registerDossierIpc(mainWindow)
+    .then((cleanup) => {
+      cleanupDossierIpc?.()
+      cleanupDossierIpc = cleanup
+    })
+    .catch((error) => {
+      console.error('[workspace-markdown] Failed to register dossier IPC', error)
+    })
+
+  mainWindow.on('closed', () => {
+    cleanupDossierIpc?.()
+    cleanupDossierIpc = null
+  })
 }
 
 // This method will be called when Electron has finished
@@ -65,6 +93,8 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  cleanupDossierIpc?.()
+  cleanupDossierIpc = null
   if (process.platform !== 'darwin') {
     app.quit()
   }

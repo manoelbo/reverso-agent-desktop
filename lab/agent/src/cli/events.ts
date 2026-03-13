@@ -24,6 +24,9 @@ export interface ToolResultEvent {
   tool: string
   status: 'success' | 'error'
   outputSummary?: string
+  durationMs?: number
+  retryCount?: number
+  errorCode?: 'input_validation' | 'runtime_exception' | 'permission_denied' | 'unknown'
 }
 
 export interface FileChangeEvent {
@@ -47,6 +50,39 @@ export interface FinalSummaryEvent {
   lines: string[]
 }
 
+export interface LoopBudgetUpdatedEvent {
+  type: 'loop_budget_updated'
+  step: number
+  usage: {
+    steps: number
+    toolCalls: number
+    elapsedMs: number
+    estimatedTokens: number
+  }
+  budget: {
+    maxSteps: number
+    maxToolCalls: number
+    maxElapsedMs: number
+    maxTokens?: number
+  }
+}
+
+export interface LoopVerificationResultEvent {
+  type: 'loop_verification_result'
+  step: number
+  ok: boolean
+  confidence: number
+  reason: string
+  gaps: string[]
+}
+
+export interface LoopStoppedEvent {
+  type: 'loop_stopped'
+  step: number
+  failures: number
+  stopReason: string
+}
+
 export type AgentEvent =
   | AgentStepEvent
   | AssistantTextDeltaEvent
@@ -55,6 +91,9 @@ export type AgentEvent =
   | FileChangeEvent
   | SystemEvent
   | FinalSummaryEvent
+  | LoopBudgetUpdatedEvent
+  | LoopVerificationResultEvent
+  | LoopStoppedEvent
 
 export interface AgentEventEnvelope {
   seq: number

@@ -7,8 +7,11 @@
   "scripts": {
     "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
     "init": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts init",
+    "agent": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts agent",
     "agent-setup": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts agent-setup",
+    "deep-dive": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts deep-dive",
     "dig": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts dig",
+    "deep-dive-next": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts deep-dive-next",
     "create-lead": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts create-lead",
     "inquiry": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts inquiry",
     "doc-process": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts doc-process",

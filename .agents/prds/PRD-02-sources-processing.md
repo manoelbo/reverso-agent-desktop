@@ -11,6 +11,20 @@
 
 Este domínio cobre a **ingestão, transformação e enriquecimento de documentos**. O Reverso Agent recebe documentos brutos (PDFs, e-mails, imagens, textos) e os transforma em artefatos Markdown estruturados e rastreáveis que alimentam o Dossier e o Graph View.
 
+## 1.1 Estado Real (Mar/2026)
+
+### Implementado agora
+- Pipeline operacional no Agent Lab para processamento `standard` e `deep`.
+- Artefatos principais: `preview.md`, `metadata.md` e `index.md` (standard), com `replica.md` preservado para `deep`.
+- Controle de fila/checkpoint e comandos de manutenção (`process-all`, `process-queue`, `rerun`, `watch`, `queue-status`, `queue-clear`).
+
+### Pendente principal
+- Paridade completa da experiência de processamento no app renderer com os mesmos controles do Agent Lab.
+- UX final consolidada para upload/processamento em todos os fluxos do app.
+
+### Legado / Transição
+- Este PRD mantém exemplos de estrutura-alvo; em conflitos operacionais, prevalece o comportamento implementado em `lab/agent/src/tools/document-processing/**`.
+
 ---
 
 ## 2. User Stories

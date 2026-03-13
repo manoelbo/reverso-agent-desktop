@@ -1,36 +1,126 @@
 ---
-description: Motor de AI — OpenRouter, 3 model slots, streaming via IPC, agent loop e tools
-globs: "src/main/ai/**"
+description: AI Engine atual no Agent Lab — OpenRouter, roteamento conversacional, PEV, validações e artefatos locais
+globs: "lab/agent/src/**"
 alwaysApply: false
 ---
 
-# AI Engine (main)
+# AI Engine (estado atual: Agent Lab)
 
-## Gateway
+## Visão geral
 
-- **OpenRouter** via OpenAI SDK: `baseURL: 'https://openrouter.ai/api/v1'`.
-- API key e seleção de modelos em `.reverso/config.json` (por workspace).
+O motor de IA operacional hoje está em `lab/agent` (CLI), não em `src/main/ai`.
+
+Ponto de entrada:
+- `lab/agent/src/index.ts`
+
+Runners principais:
+- `run-agent` (orquestração conversacional stateful)
+- `run-init`
+- `run-dig` / `deep-dive` (com alias legado `dig`)
+- `run-deep-dive-next`
+- `run-create-lead`
+- `run-inquiry`
+- `run-document-processing`
+
+Estado e artefatos:
+- Base local: `lab/agent/filesystem/**`
+- Sessão curta de deep-dive: `lab/agent/filesystem/deep-dive-session.json`
+- Memória de contexto: `lab/agent/filesystem/agent.md`
+
+## Gateway e runtime
+
+- Gateway: **OpenRouter** via cliente interno (`lab/agent/src/llm/openrouter-client.ts`).
+- API key: `OPENROUTER_API_KEY` em `.env.local`/`.env`.
+- Resolução de runtime em `lab/agent/src/config/env.ts`.
+- Política de idioma:
+  - `responseLanguage`: `auto|en|pt|es|fr|de|it`
+  - `artifactLanguage`: `source|en|pt|es|fr|de|it`
+  - defaults: resposta `en` (quando não inferível), artefato `source`.
 
 ## Model slots (3)
 
-- **processing** — Vision e extração (PDFs, imagens); modelos com suporte a imagem.
-- **writing** — Geração de Markdown (preview, replica, resumos).
-- **reasoning** — Planejamento do agente, raciocínio, tool calls.
+- **processing** — pipeline de `doc-process` (ingestão, preview/metadata/index, deep replica).
+- **writing** — geração estruturada de artefatos Markdown.
+- **reasoning** — roteamento de intenção, planejamento e execução do inquiry.
 
-## Streaming
+Observação:
+- O runtime atual usa um `model` efetivo por execução com roteamento por runner/fluxo, não um registry rígido por slot no main process.
 
-- Tokens enviados ao renderer via IPC (ex.: `ai:stream:token`).
-- Handler no main envia chunks; preload expõe callback; renderer atualiza UI em tempo real.
-- Considerar token counter no chat com aviso em ~90% do limite.
+## Arquitetura atual (resumo)
+
+```text
+lab/agent/src/
+  index.ts                      # surface CLI + fallback --text/--prompt
+  config/env.ts                 # runtime flags/env
+  runner/
+    run-agent.ts                # roteador stateful (heurística + LLM)
+    run-dig.ts                  # deep-dive + sugestão de leads
+    run-deep-dive-next.ts       # continuidade da sessão
+    run-create-lead.ts          # lead + inquiry plan
+    run-inquiry.ts              # inquiry com PEV/evidence/pre-write
+  core/
+    deep-dive-session.ts        # estado curto da conversa
+    orchestration.ts            # budget, stop_reason, plano estruturado
+    agent-loop.ts               # loop de execução com hooks
+    tool-registry.ts            # tools atômicas/capabilities/risco/custo
+    json-contract.ts            # contratos JSON estritos
+    evidence-verifier.ts        # gate de evidência
+    pre-write-validation.ts     # validação antes de persistir
+  prompts/                      # prompts em inglês + guardrails
+  tools/document-processing/**  # pipeline standard/deep + fila/checkpoint
+```
+
+## Feedback e “streaming” no estado atual
+
+- O canal primário atual é feedback incremental no terminal (`plain|compact|visual`) via `lab/agent/src/cli/renderer.ts`.
+- Não há, nesta camada, streaming de tokens por IPC para renderer do app como contrato oficial.
+- Eventos e logs de execução são persistidos em `lab/agent/filesystem/events/**`.
 
 ## Vision-first (PDFs)
 
-- Fluxo: página PDF → renderização como imagem → LLM com vision → Markdown.
-- Usar estimativa de custo (ex.: gpt-tokenizer) antes do processamento e exibir confirmação quando relevante.
+- `doc-process` suporta modos `standard` e `deep`.
+- `deep` preserva foco em fidelidade (`replica.md`).
+- Fluxo de processamento usa checkpoint/fila e comandos de replay/rerun/watch.
 
-## Agent loop
+## Agent loop e roteamento conversacional
 
-- Modos: Question (Q), Planning (P), Agent (A).
-- Loop: plan → tool call → observe → iterate.
-- **Tools** no formato OpenAI function calling: readFile, listDirectory, searchWorkspace, writeFile, editFile, deleteFile, createEntity, addAnnotation, createTimelineEvent, createInvestigation, addClue, processSource, crossReferenceCheck, updateVerificationStatus, scrapeUrl, etc.
-- Implementação das tools no main; expor via IPC para o módulo de chat/agent.
+- Entrada conversacional:
+  - `pnpm reverso agent --text|--prompt "..."`
+  - `pnpm reverso --text|--prompt "..."`
+- Roteamento:
+  - heurística rápida + fallback LLM com contrato JSON estrito (`agent-router`).
+  - prioriza sessão ativa (`deep-dive-session`) antes de fallback genérico.
+- Fluxo principal:
+  - `init -> deep-dive -> deep-dive-next -> create-lead -> inquiry`.
+- Encadeamento automático:
+  - pedido de investigar lead sem plano -> gera plano -> executa inquiry.
+
+## PEV, validações e gates (inquiry)
+
+- `plan -> execute -> verify` opcional via flag `--pev` / env.
+- Orçamento e parada explícita:
+  - `maxSteps`, `maxToolCalls`, `maxElapsedMs`, `confidenceThreshold`, `stopReason`.
+- Contratos JSON estritos para planning/final payload.
+- Self-repair (`critique and repair`) para payload inválido.
+- Evidence gate (`verified|weak|missing`) antes de promover findings.
+- Pre-write validation (schema + refs + consistência de idioma) antes de gravar artefatos.
+
+## Registry de tools atual
+
+Tools registradas em `lab/agent/src/core/tool-registry.ts`:
+- `createDossierEntity`
+- `createTimelineEvent`
+- `linkEntities`
+- `processSourceTool`
+
+Cada tool possui:
+- `requiredFields`
+- `capabilities` (`read|extract|crosscheck|persist`)
+- `riskLevel`
+- `estimatedCost`
+- validação de input + classificação de erro (`input_validation`, `runtime_exception`, etc.)
+
+## Legado / transição
+
+- Este rule substitui a visão anterior centrada em `src/main/ai/**`.
+- O alvo de longo prazo é integrar o core do `lab/agent` ao app desktop mantendo os contratos de qualidade atuais (PEV, evidence gate, pre-write, JSON strict).

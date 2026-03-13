@@ -1,6 +1,7 @@
 export type ChatMode = 'question' | 'planning' | 'agent'
 
 export type VerificationStatus = 'unverified' | 'verified' | 'rejected'
+export type EvidenceVerificationStatus = 'verified' | 'weak' | 'missing'
 export type DossierEntityType = 'person' | 'group' | 'place'
 export type GroupCategory =
   | 'company'
@@ -72,10 +73,49 @@ export interface AllegationItem {
 }
 
 export interface FindingEvidence {
+  source_id: string
+  excerpt: string
+  location: EvidenceLocation
+  confidence: number
+  verification_status: EvidenceVerificationStatus
+  verification_notes?: string[]
+  // Legacy aliases kept for backward compatibility during migration.
   source: string
   page?: number
-  excerpt: string
 }
+
+export interface PdfEvidenceLocation {
+  kind: 'pdf'
+  page?: number
+  block?: string
+  startOffset?: number
+  endOffset?: number
+  bbox?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+}
+
+export interface TextEvidenceLocation {
+  kind: 'text'
+  lineStart?: number
+  lineEnd?: number
+  block?: string
+  startOffset?: number
+  endOffset?: number
+}
+
+export interface UnknownEvidenceLocation {
+  kind: 'unknown'
+  hint?: string
+}
+
+export type EvidenceLocation =
+  | PdfEvidenceLocation
+  | TextEvidenceLocation
+  | UnknownEvidenceLocation
 
 export interface FindingItem {
   id: string

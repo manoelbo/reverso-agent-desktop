@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { InputDocument } from './contracts.js'
 
@@ -150,8 +150,26 @@ export async function readMarkdownExamples(inputDir: string): Promise<InputDocum
 }
 
 export async function writeUtf8(filePath: string, content: string): Promise<void> {
+  await writeUtf8Atomic(filePath, content)
+}
+
+export async function writeUtf8Atomic(filePath: string, content: string): Promise<void> {
   await ensureDir(path.dirname(filePath))
-  await writeFile(filePath, content, 'utf8')
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`
+  )
+  await writeFile(tempPath, content, 'utf8')
+  try {
+    await rename(tempPath, filePath)
+  } catch (error) {
+    await unlink(tempPath).catch(() => undefined)
+    throw error
+  }
+}
+
+export async function writeJsonAtomic(filePath: string, value: unknown): Promise<void> {
+  await writeUtf8Atomic(filePath, JSON.stringify(value, null, 2))
 }
 
 export function limitText(text: string, maxChars: number): string {

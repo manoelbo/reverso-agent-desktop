@@ -1,0 +1,42 @@
+import{r as a,R as e}from"./iframe-9S5LuuTj.js";import{j as t}from"./utils-vy3jnSxZ.js";import{H as y,F as L,m as O}from"./HugeiconsIcon-CKUv8V2d.js";import{A as N}from"./AppSidebar-C7PegPXZ.js";import{C as P,c as B,a as z,b as T}from"./ChatPanel-DgrEItRa.js";import{V as H,p as _,t as W}from"./ViewerPanel-BtkDcRH3.js";import{B as C}from"./button-DcnQ_azB.js";import{S as j,h as M}from"./sidebar-DcLV6ivS.js";import{T as R}from"./tooltip-Bg9KXtNn.js";import{R as q}from"./ReversoMarkdown-DfSs6SCb.js";import{B as $}from"./badge-D0lAi6qL.js";import{S as G}from"./scroll-area-CXdlHIPh.js";import"./preload-helper-PPVm8Dsz.js";import"./AppSidebarCollapsibleMenuItem-CWjSnPRU.js";import"./collapsible-CK5BCvhQ.js";import"./index-BErSN80w.js";import"./index-Cco4bJ8O.js";import"./index-DXX1l05D.js";import"./index-BPTpYtnc.js";import"./AppSidebarFooter-CV1Wu_9r.js";import"./AppSidebarHeader-B358l833.js";import"./dropdown-menu-B720qdt5.js";import"./index-BjMwMsYB.js";import"./index-BnFamXdT.js";import"./index-afAih3at.js";import"./index-DjjA1Sw3.js";import"./index-BuP_DP2q.js";import"./AppSidebarMenuItem-CIVufQH2.js";import"./AppSidebarSection-BjTO8RQ9.js";import"./breadcrumb-BT7c_Mae.js";import"./IconBase.es-DLv3a65W.js";import"./input-xEBX65vc.js";import"./index-CpxX1EO1.js";import"./separator-CWd6mTkJ.js";import"./sheet-B3SNtlJe.js";const J={"--sidebar-width":"19rem","--sidebar-top":"2.5rem"};function D({defaultLeftOpen:g=!0,defaultRightOpen:v=!0,chatPanelProps:o}){const[n,i]=a.useState("sources"),[b,l]=a.useState(null),[S,c]=a.useState(0),[s,k]=a.useState(g),[E,A]=a.useState(v),F=r=>{i(r),l(null),c(w=>w+1)},I=r=>{i(r.view),l(r),c(w=>w+1)};return t.jsx(R,{children:t.jsx(j,{open:s,onOpenChange:k,style:J,children:t.jsxs("div",{className:"flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground",children:[t.jsxs("header",{className:"drag-region relative z-30 flex h-10 shrink-0 items-center border-b border-border/60 px-3",children:[t.jsxs("div",{className:"no-drag relative z-40 flex items-center gap-2",children:[t.jsx("div",{"aria-hidden":"true",className:"h-5 w-16 shrink-0"}),t.jsx(C,{type:"button",variant:"ghost",size:"icon-sm",className:"text-muted-foreground hover:text-foreground","aria-label":s?"Hide left sidebar":"Show left sidebar",onClick:()=>k(r=>!r),children:t.jsx(y,{icon:L,size:18,strokeWidth:1.8})})]}),t.jsx("div",{className:"pointer-events-none absolute inset-x-0 text-center text-sm font-medium text-foreground",children:"Reverso Agent"}),t.jsx("div",{className:"no-drag ml-auto flex items-center",children:t.jsx(C,{type:"button",variant:"ghost",size:"icon-sm",className:"text-muted-foreground hover:text-foreground","aria-label":E?"Hide right sidebar":"Show right sidebar",onClick:()=>A(r=>!r),children:t.jsx(y,{icon:O,size:18,strokeWidth:1.8})})})]}),t.jsxs("div",{className:"flex min-h-0 flex-1 overflow-hidden",children:[t.jsx(N,{activeView:n,onSelectView:F,onSelectDossierFilter:I}),t.jsx(M,{className:"flex min-w-0 flex-1 flex-col",children:t.jsx(H,{activeView:n,dossierFilter:b,dossierFilterVersion:S})}),E?t.jsx(P,{...o}):null]})]})})})}D.__docgenInfo={description:"",methods:[],displayName:"AppLayout",props:{defaultLeftOpen:{required:!1,tsType:{name:"boolean"},description:"",defaultValue:{value:"true",computed:!1}},defaultRightOpen:{required:!1,tsType:{name:"boolean"},description:"",defaultValue:{value:"true",computed:!1}},chatPanelProps:{required:!1,tsType:{name:"ChatPanelProps"},description:""}}};const Me={title:"screens/AppLayout",component:D,parameters:{layout:"fullscreen"}},m={},d={args:{defaultRightOpen:!1}},p={args:{chatPanelProps:{surface:"cursor-dark",mode:"Agent",title:"Inspiracao para IDE com Electron",subtitle:"Sessao em andamento",items:B,composerState:"multiline"}}},u={args:{chatPanelProps:{surface:"notion-light",mode:"Plan",title:"Revisar tutorial Figma Mac",subtitle:"Workspace notes",items:T,composerState:"idle"}}},f={args:{chatPanelProps:{surface:"hybrid-reverso",mode:"Ask",title:"Markdown Interface",subtitle:"Agent running",items:z,composerState:"focused"}}};function V({title:g,subtitle:v,variant:o,activeView:n,content:i}){const b={"--sidebar-width":"19rem","--sidebar-top":"2.5rem"},l=s=>`/lab/agent/filesystem/dossier/${s.toLowerCase().replace(/\s+/g,"-")}.md`,S=s=>{},c=s=>{};return e.createElement(R,null,e.createElement(j,{open:!0,style:b},e.createElement("div",{className:"flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground"},e.createElement("header",{className:"relative z-30 flex h-10 shrink-0 items-center border-b border-border/60 px-3"},e.createElement("div",{className:"pointer-events-none absolute inset-x-0 text-center text-sm font-medium text-foreground"},"Reverso Agent / Markdown in Shell")),e.createElement("div",{className:"flex min-h-0 flex-1 overflow-hidden"},e.createElement(N,{activeView:n,onSelectView:S,onSelectDossierFilter:c}),e.createElement(M,{className:"flex min-w-0 flex-1 flex-col"},e.createElement("section",{className:"flex min-h-0 flex-1 flex-col bg-background"},e.createElement("header",{className:"flex h-14 shrink-0 items-center justify-between border-b border-border/60 px-4"},e.createElement("div",{className:"min-w-0 space-y-0.5"},e.createElement("p",{className:"truncate text-sm font-semibold text-foreground"},g),e.createElement("p",{className:"truncate text-xs text-muted-foreground"},v)),e.createElement($,{variant:"secondary"},o)),e.createElement(G,{className:"flex-1"},e.createElement("div",{className:"mx-auto flex min-h-full w-full max-w-6xl flex-col gap-4 px-6 py-6"},e.createElement(q,{content:i,variant:o,wikiLinkResolver:l}))))),e.createElement(P,null)))))}const h={render:()=>e.createElement(V,{title:"Dossier / People",subtitle:"Contexto real de shell com sidebars para avaliar legibilidade.",variant:"editorial",activeView:"dossier-people",content:_})},x={render:()=>e.createElement(V,{title:"Dossier / Timeline",subtitle:"Contexto real de shell para validar blocos :::event.",variant:"evidence",activeView:"dossier-timeline",content:W})};m.parameters={...m.parameters,docs:{...m.parameters?.docs,source:{originalSource:"{}",...m.parameters?.docs?.source}}};d.parameters={...d.parameters,docs:{...d.parameters?.docs,source:{originalSource:`{
+  args: {
+    defaultRightOpen: false
+  }
+}`,...d.parameters?.docs?.source}}};p.parameters={...p.parameters,docs:{...p.parameters?.docs,source:{originalSource:`{
+  args: {
+    chatPanelProps: {
+      surface: "cursor-dark",
+      mode: "Agent",
+      title: "Inspiracao para IDE com Electron",
+      subtitle: "Sessao em andamento",
+      items: chatLongConversation,
+      composerState: "multiline"
+    }
+  }
+}`,...p.parameters?.docs?.source}}};u.parameters={...u.parameters,docs:{...u.parameters?.docs,source:{originalSource:`{
+  args: {
+    chatPanelProps: {
+      surface: "notion-light",
+      mode: "Plan",
+      title: "Revisar tutorial Figma Mac",
+      subtitle: "Workspace notes",
+      items: chatShortConversation,
+      composerState: "idle"
+    }
+  }
+}`,...u.parameters?.docs?.source}}};f.parameters={...f.parameters,docs:{...f.parameters?.docs,source:{originalSource:`{
+  args: {
+    chatPanelProps: {
+      surface: "hybrid-reverso",
+      mode: "Ask",
+      title: "Markdown Interface",
+      subtitle: "Agent running",
+      items: chatBusyConversation,
+      composerState: "focused"
+    }
+  }
+}`,...f.parameters?.docs?.source}}};h.parameters={...h.parameters,docs:{...h.parameters?.docs,source:{originalSource:`{
+  render: () => <MarkdownShellShowcase title="Dossier / People" subtitle="Contexto real de shell com sidebars para avaliar legibilidade." variant="editorial" activeView="dossier-people" content={peopleMarkdownExample} />
+}`,...h.parameters?.docs?.source}}};x.parameters={...x.parameters,docs:{...x.parameters?.docs,source:{originalSource:`{
+  render: () => <MarkdownShellShowcase title="Dossier / Timeline" subtitle="Contexto real de shell para validar blocos :::event." variant="evidence" activeView="dossier-timeline" content={timelineMarkdownExample} />
+}`,...x.parameters?.docs?.source}}};const Re=["Default","RightSidebarClosed","CursorDenseConversation","NotionCalmConversation","HybridBusyState","ShellMarkdownEditorial","ShellMarkdownEvidence"];export{p as CursorDenseConversation,m as Default,f as HybridBusyState,u as NotionCalmConversation,d as RightSidebarClosed,h as ShellMarkdownEditorial,x as ShellMarkdownEvidence,Re as __namedExportsOrder,Me as default};

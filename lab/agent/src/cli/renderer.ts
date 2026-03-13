@@ -25,7 +25,7 @@ class CompactRenderer implements RendererAdapter {
         return
       case 'tool_result':
         console.log(
-          `${event.status === 'success' ? '✓' : 'x'} Tool ${event.tool}${event.outputSummary ? ` — ${event.outputSummary}` : ''}`
+          `${event.status === 'success' ? '✓' : 'x'} Tool ${event.tool}${event.outputSummary ? ` — ${event.outputSummary}` : ''}${typeof event.durationMs === 'number' ? ` | ${event.durationMs}ms` : ''}${typeof event.retryCount === 'number' ? ` | retry=${event.retryCount}` : ''}${event.errorCode ? ` | ${event.errorCode}` : ''}`
         )
         return
       case 'file_change':
@@ -39,6 +39,21 @@ class CompactRenderer implements RendererAdapter {
       case 'final_summary':
         console.log(`\n${event.title}`)
         for (const line of event.lines) console.log(`- ${line}`)
+        return
+      case 'loop_budget_updated':
+        console.log(
+          `↺ Loop budget step=${event.step} tools=${event.usage.toolCalls}/${event.budget.maxToolCalls} steps=${event.usage.steps}/${event.budget.maxSteps}`
+        )
+        return
+      case 'loop_verification_result':
+        console.log(
+          `${event.ok ? '✓' : 'x'} Loop verify step=${event.step} confidence=${event.confidence.toFixed(2)} reason=${event.reason}`
+        )
+        return
+      case 'loop_stopped':
+        console.log(
+          `■ Loop stopped step=${event.step} failures=${event.failures} reason=${event.stopReason}`
+        )
         return
     }
   }
@@ -64,7 +79,7 @@ class VisualRenderer implements RendererAdapter {
         return
       case 'tool_result':
         this.printBox(`TOOL RESULT ${event.status.toUpperCase()}`, [
-          `${event.tool}${event.outputSummary ? ` | ${event.outputSummary}` : ''}`
+          `${event.tool}${event.outputSummary ? ` | ${event.outputSummary}` : ''}${typeof event.durationMs === 'number' ? ` | ${event.durationMs}ms` : ''}${typeof event.retryCount === 'number' ? ` | retry=${event.retryCount}` : ''}${event.errorCode ? ` | ${event.errorCode}` : ''}`
         ])
         return
       case 'file_change':
@@ -79,6 +94,29 @@ class VisualRenderer implements RendererAdapter {
         return
       case 'final_summary':
         this.printBox(event.title, event.lines)
+        return
+      case 'loop_budget_updated':
+        this.printBox('LOOP BUDGET', [
+          `step=${event.step}`,
+          `steps ${event.usage.steps}/${event.budget.maxSteps}`,
+          `tool calls ${event.usage.toolCalls}/${event.budget.maxToolCalls}`,
+          `elapsed ${event.usage.elapsedMs}ms/${event.budget.maxElapsedMs}ms`
+        ])
+        return
+      case 'loop_verification_result':
+        this.printBox(`LOOP VERIFY ${event.ok ? 'PASS' : 'FAIL'}`, [
+          `step=${event.step}`,
+          `confidence=${event.confidence.toFixed(2)}`,
+          `reason=${event.reason}`,
+          ...(event.gaps.length ? [`gaps: ${event.gaps.join('; ')}`] : [])
+        ])
+        return
+      case 'loop_stopped':
+        this.printBox('LOOP STOPPED', [
+          `step=${event.step}`,
+          `failures=${event.failures}`,
+          `reason=${event.stopReason}`
+        ])
         return
     }
   }
@@ -121,6 +159,15 @@ export interface FeedbackController {
   warn(message: string): void
   error(message: string): void
   assistantDelta(text: string): void
+  toolCall(input: { tool: string; inputSummary?: string }): void
+  toolResult(input: {
+    tool: string
+    status: 'success' | 'error'
+    outputSummary?: string
+    durationMs?: number
+    retryCount?: number
+    errorCode?: 'input_validation' | 'runtime_exception' | 'permission_denied' | 'unknown'
+  }): void
   fileChange(input: {
     path: string
     changeType: 'new' | 'edited' | 'deleted'
@@ -129,6 +176,24 @@ export interface FeedbackController {
     preview?: string
   }): void
   finalSummary(title: string, lines: string[]): void
+  loopBudgetUpdated(input: {
+    step: number
+    usage: {
+      steps: number
+      toolCalls: number
+      elapsedMs: number
+      estimatedTokens: number
+    }
+    budget: { maxSteps: number; maxToolCalls: number; maxElapsedMs: number; maxTokens?: number }
+  }): void
+  loopVerificationResult(input: {
+    step: number
+    ok: boolean
+    confidence: number
+    reason: string
+    gaps: string[]
+  }): void
+  loopStopped(input: { step: number; failures: number; stopReason: string }): void
   flush(): Promise<void>
 }
 
@@ -169,11 +234,26 @@ export async function createFeedbackController(
     assistantDelta(text) {
       bus.emit({ type: 'assistant_text_delta', text })
     },
+    toolCall(input) {
+      bus.emit({ type: 'tool_call', ...input })
+    },
+    toolResult(input) {
+      bus.emit({ type: 'tool_result', ...input })
+    },
     fileChange(change) {
       bus.emit({ type: 'file_change', ...change })
     },
     finalSummary(title, lines) {
       bus.emit({ type: 'final_summary', title, lines })
+    },
+    loopBudgetUpdated(input) {
+      bus.emit({ type: 'loop_budget_updated', ...input })
+    },
+    loopVerificationResult(input) {
+      bus.emit({ type: 'loop_verification_result', ...input })
+    },
+    loopStopped(input) {
+      bus.emit({ type: 'loop_stopped', ...input })
     },
     async flush() {
       await bus.flush()

@@ -14,6 +14,7 @@ import {
   setSourceQueued
 } from './source-checkpoint.js'
 import { computeDocId, scanSourceFiles, toSourceFileEntries } from './source-indexer.js'
+import { parseArtifactLanguage } from '../../core/language.js'
 
 const SUBCOMMANDS = [
   'process-all',
@@ -86,6 +87,7 @@ export async function runCli(argv: string[]): Promise<boolean> {
     const queueMode = sub === 'process-all' ? 'all' : sub === 'process-selected' ? 'selected' : 'queue'
     const processingMode = args.mode === 'deep' ? 'deep' : 'standard'
     const defaultModel = processingMode === 'deep' ? DEFAULT_MODEL_DEEP : DEFAULT_MODEL_STANDARD
+    const artifactLanguage = parseArtifactLanguage(args['artifactlanguage']) ?? 'source'
     await runQueue({
       sourceDir,
       mode: queueMode,
@@ -105,7 +107,8 @@ export async function runCli(argv: string[]): Promise<boolean> {
           : undefined,
       debugOpenRouter: args['debugopenrouter'] === 'true' || args['debugopenrouter'] === '1'
       ,
-      feedbackMode: getFeedbackMode(args, processingMode)
+      feedbackMode: getFeedbackMode(args, processingMode),
+      artifactLanguage
     })
     return true
   }
@@ -114,6 +117,7 @@ export async function runCli(argv: string[]): Promise<boolean> {
     const apiKey = getApiKey()
     const processingMode = args.mode === 'deep' ? 'deep' : 'standard'
     const defaultModel = processingMode === 'deep' ? DEFAULT_MODEL_DEEP : DEFAULT_MODEL_STANDARD
+    const artifactLanguage = parseArtifactLanguage(args['artifactlanguage']) ?? 'source'
     const inputPath = args.input ?? args.inputpath
     const all = args.all === 'true' || args.all === '1' || !inputPath
     await runRerun({
@@ -135,7 +139,8 @@ export async function runCli(argv: string[]): Promise<boolean> {
           ? args['providersort']
           : undefined,
       debugOpenRouter: args['debugopenrouter'] === 'true' || args['debugopenrouter'] === '1',
-      feedbackMode: getFeedbackMode(args, processingMode)
+      feedbackMode: getFeedbackMode(args, processingMode),
+      artifactLanguage
     })
     return true
   }
@@ -208,6 +213,7 @@ export async function runCli(argv: string[]): Promise<boolean> {
       let queueRunning = false
       const watchProcessingMode = args.mode === 'deep' ? 'deep' : 'standard'
       const watchDefaultModel = watchProcessingMode === 'deep' ? DEFAULT_MODEL_DEEP : DEFAULT_MODEL_STANDARD
+      const artifactLanguage = parseArtifactLanguage(args['artifactlanguage']) ?? 'source'
       const runProcessQueue = (): void => {
         if (queueRunning) return
         queueRunning = true
@@ -230,7 +236,8 @@ export async function runCli(argv: string[]): Promise<boolean> {
               : undefined,
           debugOpenRouter: args['debugopenrouter'] === 'true' || args['debugopenrouter'] === '1'
           ,
-          feedbackMode: getFeedbackMode(args, watchProcessingMode)
+          feedbackMode: getFeedbackMode(args, watchProcessingMode),
+          artifactLanguage
         })
           .catch((err) => console.error('process-queue (watch):', err))
           .finally(() => {

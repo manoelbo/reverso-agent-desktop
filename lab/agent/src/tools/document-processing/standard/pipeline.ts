@@ -15,6 +15,10 @@ import { runStepPlaces } from './steps/step-places.js'
 import { runStepEvents } from './steps/step-events.js'
 import { runStepPostprocess } from './steps/step-postprocess.js'
 import type { CacheContext } from './cache-context.js'
+import {
+  buildArtifactLanguageInstruction,
+  type ArtifactLanguage
+} from '../../../core/language.js'
 
 const DEFAULT_MODEL = 'google/gemini-2.0-flash-lite-001'
 
@@ -50,6 +54,7 @@ export interface StandardProcessParams {
   dossierTimelineDir: string
   apiKey: string
   model?: string
+  artifactLanguage?: ArtifactLanguage
   resume?: boolean
   parallelLimit?: number
   onStepStart?: (step: StepName) => void
@@ -125,6 +130,9 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
   await mkdir(params.artifactDir, { recursive: true })
 
   const model = params.model ?? DEFAULT_MODEL
+  const artifactLanguageInstruction = buildArtifactLanguageInstruction(
+    params.artifactLanguage ?? 'source'
+  )
   const client = new OpenRouterClient(params.apiKey)
   const sourceFileName = basename(params.pdfPath)
 
@@ -201,6 +209,7 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
       sourceFileName,
       artifactDir: params.artifactDir,
       model,
+      artifactLanguageInstruction,
       client
     })
     ctx = previewResult.ctx
@@ -229,7 +238,12 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
     {
       name: 'index',
       run: async () => {
-        const result = await runStepIndex({ ctx: ctx!, artifactDir: params.artifactDir, client })
+        const result = await runStepIndex({
+          ctx: ctx!,
+          artifactDir: params.artifactDir,
+          artifactLanguageInstruction,
+          client
+        })
         usages.push(result.usage)
         params.onArtifact?.({
           step: 'index',
@@ -244,6 +258,7 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
         const result = await runStepNotes({
           ctx: ctx!,
           sourceFileName,
+          artifactLanguageInstruction,
           client
         })
         usages.push(result.usage)
@@ -253,7 +268,12 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
     {
       name: 'persons',
       run: async () => {
-        const result = await runStepPersons({ ctx: ctx!, peopleDir: params.dossierPeopleDir, client })
+        const result = await runStepPersons({
+          ctx: ctx!,
+          peopleDir: params.dossierPeopleDir,
+          artifactLanguageInstruction,
+          client
+        })
         usages.push(result.usage)
         cp.artifacts.personsCreated = [...cp.artifacts.personsCreated, ...result.created]
         cp.artifacts.personsUpdated = [...cp.artifacts.personsUpdated, ...result.updated]
@@ -268,7 +288,12 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
     {
       name: 'groups',
       run: async () => {
-        const result = await runStepGroups({ ctx: ctx!, groupsDir: params.dossierGroupsDir, client })
+        const result = await runStepGroups({
+          ctx: ctx!,
+          groupsDir: params.dossierGroupsDir,
+          artifactLanguageInstruction,
+          client
+        })
         usages.push(result.usage)
         cp.artifacts.groupsCreated = [...cp.artifacts.groupsCreated, ...result.created]
         cp.artifacts.groupsUpdated = [...cp.artifacts.groupsUpdated, ...result.updated]
@@ -283,7 +308,12 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
     {
       name: 'places',
       run: async () => {
-        const result = await runStepPlaces({ ctx: ctx!, placesDir: params.dossierPlacesDir, client })
+        const result = await runStepPlaces({
+          ctx: ctx!,
+          placesDir: params.dossierPlacesDir,
+          artifactLanguageInstruction,
+          client
+        })
         usages.push(result.usage)
         cp.artifacts.placesCreated = [...cp.artifacts.placesCreated, ...result.created]
         cp.artifacts.placesUpdated = [...cp.artifacts.placesUpdated, ...result.updated]
@@ -298,7 +328,12 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
     {
       name: 'events',
       run: async () => {
-        const result = await runStepEvents({ ctx: ctx!, timelineDir: params.dossierTimelineDir, client })
+        const result = await runStepEvents({
+          ctx: ctx!,
+          timelineDir: params.dossierTimelineDir,
+          artifactLanguageInstruction,
+          client
+        })
         usages.push(result.usage)
         cp.artifacts.eventsPaths = [...new Set([...cp.artifacts.eventsPaths, ...result.eventsPaths])]
         for (const filePath of result.created) {
@@ -372,6 +407,7 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
       await runStepWithRetry('postprocess', async () => {
         await runStepPostprocess({
           artifactDir: params.artifactDir,
+          artifactLanguage: params.artifactLanguage ?? 'source',
           entities: {
             persons: [...cp.artifacts.personsCreated, ...cp.artifacts.personsUpdated],
             groups: [...cp.artifacts.groupsCreated, ...cp.artifacts.groupsUpdated],

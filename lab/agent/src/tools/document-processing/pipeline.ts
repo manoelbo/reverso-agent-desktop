@@ -9,6 +9,10 @@ import { buildPreviewAndMetadata } from './preview-metadata-builder.js'
 import { loadCheckpoint, saveCheckpoint } from './checkpoint.js'
 import { mergeUsage } from './lib/merge-usage.js'
 import type { RunReport, OpenRouterUsage } from './types.js'
+import {
+  buildArtifactLanguageInstruction,
+  type ArtifactLanguage
+} from '../../core/language.js'
 
 export interface ProcessSingleDocumentParams {
   apiKey: string
@@ -22,6 +26,7 @@ export interface ProcessSingleDocumentParams {
   reportPath: string
   model: string
   previewModel?: string
+  artifactLanguage?: ArtifactLanguage
   maxPages?: number
   chunkPages: number
   concurrency: number
@@ -134,6 +139,9 @@ export async function processSingleDocument(
   }
 
   const previewModel = params.previewModel ?? params.model
+  const artifactLanguageInstruction = buildArtifactLanguageInstruction(
+    params.artifactLanguage ?? 'source'
+  )
   params.onPreviewMetadataStart?.()
 
   let checkpoint = await loadCheckpoint(params.checkpointPath)
@@ -147,6 +155,7 @@ export async function processSingleDocument(
     previewMetadata = await buildPreviewAndMetadata({
       model: previewModel,
       replicaMarkdown: ocrResult.replicaMarkdown,
+      artifactLanguageInstruction,
       openRouterClient: client,
       ...(params.providerSort ? { provider: { sort: params.providerSort } } : {})
     })

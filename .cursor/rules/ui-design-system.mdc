@@ -1,6 +1,6 @@
 ---
 description: Design system — shadcn/ui, shadcnblocks, tema Reverso 0, IBM Plex, OKLCH, frameless drag regions
-globs: "src/renderer/components/**"
+globs: "src/renderer/src/components/**"
 alwaysApply: false
 ---
 
@@ -13,8 +13,18 @@ alwaysApply: false
 - **Application Shell 9** — base do layout master (Activity Bar + File Explorer + Panels).
 - **Tema Reverso 0** via tweakcn; tokens em OKLCH para light/dark.
 - **Fontes:** IBM Plex Sans Thai (body), IBM Plex Mono (code), IBM Plex Sans JP (fallback).
+- **Ícones (padrão oficial):** `@hugeicons/react` + ícones de `@hugeicons/core-free-icons`.
 - **Border radius:** 0rem (cantos retos).
 - **Cores:** Nunca hardcoded; usar variáveis CSS do tema (OKLCH).
+
+## Workflow UI (padrão atual)
+
+- Para mudanças relevantes de UI (screens, blocos, fluxos de interação), usar **Storybook-first recomendado**:
+  1. criar variações no Storybook;
+  2. validar visual/interação;
+  3. implementar no app real após aprovação explícita quando aplicável.
+- Exceções: ajustes pequenos e pontuais (texto, spacing local, bug visual simples) podem ir direto no app.
+- Sempre manter consistência com os componentes já aprovados no Storybook.
 
 ## Busca de componentes (obrigatório)
 
@@ -41,6 +51,7 @@ Usar o **shadcn MCP** no Cursor para busca por linguagem natural (ex: "find side
 - **components/ui/** — Componentes shadcn (button, dialog, dropdown-menu, input, tabs, sidebar, ScrollArea, etc.).
 - **components/blocks/** — Blocos instalados do shadcnblocks (application-shell9, etc.).
 - **components/app/** — Componentes específicos do produto (ex.: SourceCard, DossierTree, ChatPanel, GraphWidget).
+- Caminho real no projeto: `src/renderer/src/components/**`.
 
 ## Setup inicial
 
@@ -56,6 +67,9 @@ pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmmfid9kr000104jufj121z6
 
 # 4. Instalar Application Shell 9
 pnpm dlx shadcn@latest add @shadcnblocks/application-shell9
+
+# 5. Garantir biblioteca de ícones padrão (Hugeicons)
+pnpm add @hugeicons/react @hugeicons/core-free-icons
 ```
 
 ## Referência
@@ -63,4 +77,3 @@ pnpm dlx shadcn@latest add @shadcnblocks/application-shell9
 - Tema Reverso 0: https://tweakcn.com/themes/cmmfid9kr000104jufj121z63
 - shadcnblocks: https://www.shadcnblocks.com/blocks
 - shadcn MCP: configurado em `.cursor/mcp.json`
-- PRDs: `.agents/prds/PRD-05-ui-interaction-screens.md`

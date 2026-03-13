@@ -5,30 +5,17 @@ import { formatFrontmatter } from '../core/markdown.js'
 import { toRelative } from '../core/paths.js'
 import { OpenRouterClient } from '../llm/openrouter-client.js'
 import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
-
-const INIT_SYSTEM_PROMPT = `
-Voce e um agente de jornalismo investigativo. Recebera resumos (previews) de documentos de uma pasta source.
-
-Sua tarefa: com base apenas nos previews, escrever em Markdown um entendimento inicial da investigacao.
-
-Retorne um unico bloco Markdown com as secoes abaixo (use os titulos exatos). Nao invente fatos; baseie-se apenas no que os previews mostram.
-
-## Contexto da investigacao
-Paragrafo resumindo do que se trata o material (obras, contratos, entidades, locais).
-
-## Hipótese inicial
-Uma ou duas frases com a hipotese de trabalho ou pergunta central que a investigacao pode responder.
-
-## Escopo atual
-O que esta dentro do escopo com base nos documentos vistos e o que fica de fora.
-
-## Instrucoes do agente
-Lista curta de instrucoes para o agente (ex.: priorizar rastreabilidade, nao concluir sem fonte, marcar nao verificado quando em duvida).
-`.trim()
+import { buildInitSystemPrompt } from '../prompts/init.js'
+import {
+  buildResponseLanguageInstruction,
+  resolveResponseLanguage
+} from '../core/language.js'
 
 export interface RunInitOptions {
   maxTokens?: number
   model?: string
+  responseLanguage?: string
+  artifactLanguage?: string
   feedbackMode?: FeedbackMode
   feedback?: FeedbackController
 }
@@ -37,7 +24,11 @@ const DEFAULT_MAX_TOKENS = 20_000
 
 export async function runInit(options: RunInitOptions = {}): Promise<void> {
   const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS
-  const runtime = await resolveRuntimeConfig(options.model ? { model: options.model } : {})
+  const runtime = await resolveRuntimeConfig({
+    ...(options.model ? { model: options.model } : {}),
+    ...(options.responseLanguage ? { responseLanguage: options.responseLanguage } : {}),
+    ...(options.artifactLanguage ? { artifactLanguage: options.artifactLanguage } : {})
+  })
   await ensureDir(runtime.paths.outputDir)
   await ensureDir(runtime.paths.eventsDir)
   const ownsFeedback = !options.feedback
@@ -75,9 +66,14 @@ export async function runInit(options: RunInitOptions = {}): Promise<void> {
   const userPrompt = userParts.join('\n\n---\n\n')
 
   const client = new OpenRouterClient(runtime.apiKey)
+  const responseLanguage = resolveResponseLanguage({
+    mode: runtime.responseLanguage,
+    fallback: runtime.defaultResponseLanguage
+  })
+  const initSystemPrompt = buildInitSystemPrompt(buildResponseLanguageInstruction(responseLanguage))
   const understanding = await client.chatTextStream({
     model: runtime.model,
-    system: INIT_SYSTEM_PROMPT,
+    system: initSystemPrompt,
     user: userPrompt,
     temperature: 0.2,
     onChunk(delta) {
@@ -120,7 +116,7 @@ export async function runInit(options: RunInitOptions = {}): Promise<void> {
   feedback.finalSummary('Proximos passos', [
     `Previews usados: ${result.usedCount} (${result.estimatedTokens} tokens estimados).`,
     'Ajuste instrucoes com: pnpm reverso agent-setup --text "Adicione que o foco da investigacao e..."',
-    'Depois, use o comando /dig para encontrar linhas investigativas.'
+    'Depois, use o comando /deep-dive para encontrar linhas investigativas e sugerir leads.'
   ])
   if (ownsFeedback) {
     await feedback.flush()

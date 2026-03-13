@@ -1,0 +1,64 @@
+---
+description: Visão geral do Reverso Agent — o que é, stack, arquitetura e estrutura de pastas
+alwaysApply: true
+---
+
+# Reverso Agent — Projeto
+
+## O que é
+
+App desktop **Electron** de investigação jornalística (OSINT) que usa LLMs de forma agêntica para ingerir documentos, transformá-los em Markdown estruturado e rastreável, organizar dossiês e graph view — com dados locais e rastreabilidade total às fontes.
+
+## Tech Stack
+
+- **Runtime:** Node.js (Electron)
+- **Build:** electron-vite, electron-builder
+- **Frontend:** React, TypeScript strict, Tailwind, shadcn/ui, shadcnblocks (Pro), Zustand
+- **Iconografia (padrão):** Hugeicons (`@hugeicons/react` + `@hugeicons/core-free-icons`)
+- **Layout base:** Application Shell 9 (shadcnblocks) — IDE-style com Activity Bar + File Explorer
+- **Agent core atual:** `lab/agent` (CLI stateful investigativo)
+- **Backend (main, em evolução):** integração incremental com o core do `lab/agent`
+- **AI:** OpenRouter, contratos JSON estritos, PEV (`plan -> execute -> verify`), evidence gate, pre-write validation
+- **Fontes:** IBM Plex Sans Thai, Mono, Sans JP
+- **Tema:** Reverso 0 (OKLCH), border-radius 0rem
+- **MCP:** shadcn MCP server para busca e instalação de componentes via Cursor
+
+## Domínios (5)
+
+1. **Workspace / Infra / AI** — Electron, IPC, storage, OpenRouter, model routing
+2. **Sources** — Ingestão, PDF→MD, metadata, preview, replica
+3. **Dossier** — Entidades, annotations, clues, investigações, graph
+4. **Chat / Agent** — Chat UI, agent loop, tools, Reverso Markdown
+5. **UI** — Layout, sidebar, viewer, Chat-First Principle, atalhos
+
+## Estrutura de pastas (src/)
+
+```
+src/
+ main/       bootstrap app + integração progressiva
+  preload/    contextBridge + IPC tipado
+  shared/     ipc-schema.ts (Zod)
+  renderer/   components/, stores/, hooks/, lib/, styles/
+lab/agent/   core investigativo em produção (CLI + tools + runners + testes)
+```
+
+Testes do Agent Lab ficam em `lab/agent/tests/` (inclui roteamento conversacional, deep-dive, inquiry, validações e document-processing).
+
+## Workspace no disco
+
+`lab/agent/filesystem/` é a base operacional atual do laboratório e contém:
+
+- `source/` + `.artifacts/` — documentos e artefatos de processamento
+- `dossier/` — entidades e timeline
+- `investigation/` — leads, allegations, findings, notes
+- `reports/` e `events/` — logs e saídas auxiliares de execução
+
+Dados editoriais em **Markdown** com validações de consistência antes de persistir.
+
+## shadcnblocks (componentes estendidos)
+
+- Assinatura **Pro** ativa — acesso a todos os blocos premium.
+- Registry configurado em `components.json` (`@shadcnblocks`).
+- **Application Shell 9** é a base do layout (Activity Bar + File Explorer Sidebar + Panels).
+- **Regra:** Antes de implementar qualquer componente UI do zero, buscar primeiro no shadcn/ui oficial e no shadcnblocks via MCP ou CLI.
+- **Fluxo UI recomendado:** Storybook-first para mudanças relevantes (variações e validação antes de integrar no app real).

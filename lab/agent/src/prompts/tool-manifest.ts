@@ -9,32 +9,32 @@ export interface ToolManifestItem {
 export const TOOL_MANIFEST: ToolManifestItem[] = [
   {
     name: 'createDossierEntity',
-    description: 'Cria entidades do dossie (person, group, place) em arquivos dedicados.',
-    whenToUse: 'Quando identificar atores, organizacoes ou locais que devem ser materializados.'
+    description: 'Creates dossier entities (person, group, place) in dedicated files.',
+    whenToUse: 'Use when you identify actors, organizations, or places that should be materialized.'
   },
   {
     name: 'createTimelineEvent',
-    description: 'Cria eventos na timeline mensal do dossie com data, atores e descricao.',
-    whenToUse: 'Quando houver marco temporal relevante para ordenar os acontecimentos.'
+    description: 'Creates timeline events in monthly dossier files with date, actors, and description.',
+    whenToUse: 'Use when there is a relevant temporal milestone to order events.'
   },
   {
     name: 'linkEntities',
-    description: 'Adiciona conexoes [[wiki-links]] entre entidades em um arquivo markdown.',
-    whenToUse: 'Quando precisar explicitar relacoes entre atores, locais e documentos.'
+    description: 'Adds [[wiki-links]] connections between entities inside a markdown file.',
+    whenToUse: 'Use when you need to make relationships explicit between actors, places, and documents.'
   },
   {
     name: 'processSourceTool',
     description:
-      'Executa subcomandos de processamento da pasta source (fila, status, selecao e monitoramento).',
+      'Runs source processing subcommands (queue, status, selection, and watch workflows).',
     whenToUse:
-      'Quando precisar gerar/atualizar artefatos em source/.artifacts antes de init, dig, create-lead ou inquiry.'
+      'Use when you need to generate/update artifacts in source/.artifacts before init, dig, create-lead, or inquiry.'
   }
 ]
 
 export function getToolManifestForPrompt(items: ToolManifestItem[] = TOOL_MANIFEST): string {
   const lines = items.map(
     (item, idx) =>
-      `${idx + 1}. ${item.name}\n- descricao: ${item.description}\n- quando_usar: ${item.whenToUse}`
+      `${idx + 1}. ${item.name}\n- description: ${item.description}\n- when_to_use: ${item.whenToUse}`
   )
-  return ['Ferramentas disponiveis do agente:', ...lines].join('\n')
+  return ['Available agent tools:', ...lines].join('\n')
 }

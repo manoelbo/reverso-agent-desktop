@@ -11,6 +11,7 @@ import type { OpenRouterUsage } from '../../types.js'
 export interface StepIndexParams {
   ctx: CacheContext
   artifactDir: string
+  artifactLanguageInstruction?: string
   client: OpenRouterClient
   timeoutMs?: number
 }
@@ -29,7 +30,9 @@ export async function runStepIndex(params: StepIndexParams): Promise<StepIndexRe
     params.ctx,
     params.client,
     STANDARD_INDEX_SYSTEM_PROMPT,
-    STANDARD_INDEX_USER_PROMPT,
+    [STANDARD_INDEX_USER_PROMPT, params.artifactLanguageInstruction]
+      .filter(Boolean)
+      .join('\n\n'),
     params.timeoutMs ?? 180_000
   )
 

@@ -15,6 +15,7 @@ import type { OpenRouterUsage } from '../../types.js'
 export interface StepEventsParams {
   ctx: CacheContext
   timelineDir: string
+  artifactLanguageInstruction?: string
   client: OpenRouterClient
   timeoutMs?: number
 }
@@ -52,7 +53,7 @@ export async function runStepEvents(params: StepEventsParams): Promise<StepEvent
     params.ctx,
     params.client,
     STANDARD_EVENTS_SYSTEM_PROMPT,
-    STANDARD_EVENTS_USER_PROMPT,
+    [STANDARD_EVENTS_USER_PROMPT, params.artifactLanguageInstruction].filter(Boolean).join("\n\n"),
     params.timeoutMs ?? 120_000,
     8192
   )

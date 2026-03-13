@@ -11,6 +11,21 @@
 
 Este domínio cobre a **fundação técnica** do Reverso Agent: setup do Electron, comunicação IPC, storage local, integração com provedores de IA, roteamento de modelos, sistema de temas, e toda a infraestrutura que os outros domínios consomem.
 
+## 1.1 Estado Atual vs Arquitetura Alvo (Mar/2026)
+
+### Estado atual implementado
+- Núcleo funcional do agente está em `lab/agent/src/**` (CLI investigativo com fluxo stateful).
+- `src/main/index.ts` e renderer estão em evolução incremental, sem toda a arquitetura de serviços originalmente proposta.
+- Integração com modelos está operacional via OpenRouter no Agent Lab.
+
+### Arquitetura alvo (ainda em construção)
+- Consolidar serviços em `src/main/{ipc,ai,db,fs,services}` com contratos estáveis para app desktop.
+- Unificar runtime do app com o core já validado no `lab/agent`.
+
+### Legado / Transição
+- Trechos deste documento que descrevem estrutura completa no `src/main/**` representam direção-alvo.
+- Não interpretar essas seções como “já implementadas” enquanto não houver paridade no código do app.
+
 ---
 
 ## 2. User Stories
@@ -25,7 +40,7 @@ Este domínio cobre a **fundação técnica** do Reverso Agent: setup do Electro
 
 ## 3. Especificações Técnicas
 
-### 3.1 Electron Setup
+### 3.1 Electron Setup (target architecture)
 
 **Stack:**
 - `electron-vite` (boilerplate + build tool)
@@ -221,7 +236,7 @@ Cada "Investigation Desk" é uma pasta no filesystem com estrutura fixa:
 │       └── ...
 ```
 
-### 3.5 SQLite Schema (Kysely)
+### 3.5 SQLite Schema (target architecture)
 
 ```typescript
 import { Kysely, SqliteDialect } from 'kysely'
@@ -306,7 +321,7 @@ async function initializeSchema(db: Kysely<ReversoDB>) {
 }
 ```
 
-### 3.6 AI Engine — OpenAI SDK → OpenRouter
+### 3.6 AI Engine — OpenRouter (target + transição)
 
 ```typescript
 import OpenAI from 'openai'
@@ -387,7 +402,7 @@ Persistido via IPC → main process → config.json. Carregado no startup antes 
 
 ---
 
-## 4. Dependências deste domínio
+## 4. Dependências deste domínio (target)
 
 ```json
 {
@@ -412,7 +427,7 @@ Persistido via IPC → main process → config.json. Carregado no startup antes 
 
 ---
 
-## 5. Contratos com outros domínios
+## 5. Contratos com outros domínios (target)
 
 ### → Para UI & Interaction (PRD-05)
 - Frameless window + drag regions — ver PRD-05 §3

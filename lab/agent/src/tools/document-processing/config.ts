@@ -57,6 +57,16 @@ function parseArgs(argv: string[]): LabArgs {
     providerSort:
       args['provider-sort'] === 'latency' || args['provider-sort'] === 'throughput' || args['provider-sort'] === 'price'
         ? args['provider-sort']
+        : undefined,
+    artifactLanguage:
+      args['artifact-language'] === 'source' ||
+      args['artifact-language'] === 'en' ||
+      args['artifact-language'] === 'pt' ||
+      args['artifact-language'] === 'es' ||
+      args['artifact-language'] === 'fr' ||
+      args['artifact-language'] === 'de' ||
+      args['artifact-language'] === 'it'
+        ? args['artifact-language']
         : undefined
   }
 }

@@ -2,6 +2,10 @@ import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { basename } from 'node:path'
 import type { NoteItem } from '../../../../core/contracts.js'
+import {
+  detectLanguageFromText,
+  type ArtifactLanguage
+} from '../../../../core/language.js'
 
 export interface PostprocessEntities {
   persons: string[]
@@ -13,6 +17,7 @@ export interface PostprocessEntities {
 
 export interface StepPostprocessParams {
   artifactDir: string
+  artifactLanguage?: ArtifactLanguage
   entities: PostprocessEntities
 }
 
@@ -28,51 +33,72 @@ function toWikiLinks(filePaths: string[]): string[] {
   })
 }
 
-function renderNotesSection(notes: NoteItem[]): string {
+function renderNotesSection(notes: NoteItem[], labels: { notesTitle: string; page: string }): string {
   if (notes.length === 0) return ''
   const lines = notes
     .sort((a, b) => a.page - b.page)
     .map((note) => {
       const tags = note.tags.length > 0 ? ` [${note.tags.join(', ')}]` : ''
-      return `- **${note.category}** — Página ${note.page}: "${note.highlight}"${tags}\n  - ${note.description}`
+      return `- **${note.category}** — ${labels.page} ${note.page}: "${note.highlight}"${tags}\n  - ${note.description}`
     })
     .join('\n')
-  return `\n## Notes geradas\n\n${lines}\n`
+  return `\n## ${labels.notesTitle}\n\n${lines}\n`
 }
 
-function updateMetadataEntities(existingContent: string, entities: PostprocessEntities): string {
+function updateMetadataEntities(
+  existingContent: string,
+  entities: PostprocessEntities,
+  labels: {
+    extractedEntitiesTitle: string
+    persons: string
+    groups: string
+    places: string
+    events: string
+    notesCount: string
+    none: string
+  }
+): string {
+  const escapedTitle = labels.extractedEntitiesTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const personsLinks = toWikiLinks(entities.persons).join(', ')
   const groupsLinks = toWikiLinks(entities.groups).join(', ')
   const placesLinks = toWikiLinks(entities.places).join(', ')
 
   const sectionToAdd = `
-## Entidades extraídas (Standard Process)
+## ${labels.extractedEntitiesTitle}
 
-**persons_mentioned:** ${personsLinks || '(nenhum)'}
-**groups_mentioned:** ${groupsLinks || '(nenhum)'}
-**places_mentioned:** ${placesLinks || '(nenhum)'}
-**events_mentioned:** ${entities.events.map((f) => basename(f)).join(', ') || '(nenhum)'}
-**notes_count:** ${entities.notes.length}
+**${labels.persons}:** ${personsLinks || labels.none}
+**${labels.groups}:** ${groupsLinks || labels.none}
+**${labels.places}:** ${placesLinks || labels.none}
+**${labels.events}:** ${entities.events.map((f) => basename(f)).join(', ') || labels.none}
+**${labels.notesCount}:** ${entities.notes.length}
 `
 
   // Substitui se ja existe, senao adiciona ao final
-  if (existingContent.includes('## Entidades extraídas (Standard Process)')) {
+  if (existingContent.includes(`## ${labels.extractedEntitiesTitle}`)) {
     return existingContent.replace(
-      /\n## Entidades extraídas \(Standard Process\)[\s\S]*?(?=\n##|\s*$)/,
+      new RegExp(`\\n## ${escapedTitle}[\\s\\S]*?(?=\\n##|\\s*$)`),
       sectionToAdd
     )
   }
   return `${existingContent.trimEnd()}\n${sectionToAdd}`
 }
 
-function updatePreviewWithNotes(existingContent: string, notes: NoteItem[]): string {
+function updatePreviewWithNotes(
+  existingContent: string,
+  notes: NoteItem[],
+  labels: { notesTitle: string; page: string }
+): string {
+  const escapedNotesTitle = labels.notesTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   if (notes.length === 0) return existingContent
 
-  const notesSection = renderNotesSection(notes)
+  const notesSection = renderNotesSection(notes, labels)
 
   // Substitui secao de notes se ja existe
-  if (existingContent.includes('## Notes geradas')) {
-    return existingContent.replace(/\n## Notes geradas[\s\S]*?(?=\n##|\s*$)/, notesSection)
+  if (existingContent.includes(`## ${labels.notesTitle}`)) {
+    return existingContent.replace(
+      new RegExp(`\\n## ${escapedNotesTitle}[\\s\\S]*?(?=\\n##|\\s*$)`),
+      notesSection
+    )
   }
 
   // Adiciona antes da ultima secao ou ao final
@@ -96,9 +122,36 @@ export async function runStepPostprocess(
     metadataContent = await readFile(metadataPath, 'utf8')
   } catch {
     // metadata.md nao existe ainda, cria basico
-    metadataContent = '---\ntype: metadata\n---\n\n# Metadados\n'
+    metadataContent = '---\ntype: metadata\n---\n\n# Metadata\n'
   }
-  const updatedMetadata = updateMetadataEntities(metadataContent, params.entities)
+  const autoDetected =
+    params.artifactLanguage === 'source' ? detectLanguageFromText(metadataContent) : undefined
+  const lang = params.artifactLanguage === 'source' ? autoDetected ?? 'en' : params.artifactLanguage ?? 'en'
+  const labels =
+    lang === 'pt'
+      ? {
+          extractedEntitiesTitle: 'Extracted entities (Standard Process)',
+          persons: 'persons_mentioned',
+          groups: 'groups_mentioned',
+          places: 'places_mentioned',
+          events: 'events_mentioned',
+          notesCount: 'notes_count',
+          none: '(nenhum)',
+          notesTitle: 'Generated notes',
+          page: 'Página'
+        }
+      : {
+          extractedEntitiesTitle: 'Extracted entities (Standard Process)',
+          persons: 'persons_mentioned',
+          groups: 'groups_mentioned',
+          places: 'places_mentioned',
+          events: 'events_mentioned',
+          notesCount: 'notes_count',
+          none: '(none)',
+          notesTitle: 'Generated notes',
+          page: 'Page'
+        }
+  const updatedMetadata = updateMetadataEntities(metadataContent, params.entities, labels)
   await writeFile(metadataPath, updatedMetadata, 'utf8')
 
   // Atualiza preview.md com links de notes
@@ -108,7 +161,7 @@ export async function runStepPostprocess(
   } catch {
     previewContent = ''
   }
-  const updatedPreview = updatePreviewWithNotes(previewContent, params.entities.notes)
+  const updatedPreview = updatePreviewWithNotes(previewContent, params.entities.notes, labels)
   await writeFile(previewPath, updatedPreview, 'utf8')
 
   return { metadataPath, previewPath }

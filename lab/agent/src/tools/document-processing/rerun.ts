@@ -8,6 +8,7 @@ import { loadSourceCheckpoint, upsertSourceFileEntries, resetSourceEntriesForRer
 import { scanSourceFiles, toSourceFileEntries } from './source-indexer.js'
 import { runQueue } from './queue-runner.js'
 import type { FeedbackMode } from '../../cli/renderer.js'
+import type { ArtifactLanguage } from '../../core/language.js'
 
 const STANDARD_FILES = ['preview.md', 'index.md', 'metadata.md', 'standard-checkpoint.json']
 const DEEP_FILES = ['replica.md', 'checkpoint.json', 'preview.md', 'metadata.md', 'run-report.json']
@@ -63,6 +64,7 @@ export interface RunRerunOptions {
   providerSort?: 'latency' | 'throughput' | 'price'
   debugOpenRouter?: boolean
   feedbackMode?: FeedbackMode
+  artifactLanguage?: ArtifactLanguage
 }
 
 /**
@@ -135,6 +137,7 @@ export async function runRerun(options: RunRerunOptions): Promise<void> {
     resume: options.resume,
     providerSort: options.providerSort,
     debugOpenRouter: options.debugOpenRouter,
-    feedbackMode: options.feedbackMode
+    feedbackMode: options.feedbackMode,
+    artifactLanguage: options.artifactLanguage ?? 'source'
   })
 }

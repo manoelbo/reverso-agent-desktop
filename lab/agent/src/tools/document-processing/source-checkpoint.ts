@@ -2,8 +2,9 @@
 /**
  * Persistência do checkpoint global da pasta source.
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import type { SourceCheckpoint, SourceFileEntry, SourceFileStatus } from './types.js'
+import { writeJsonAtomic } from '../../core/fs-io.js'
 
 const SOURCE_CHECKPOINT_FILENAME = 'source-checkpoint.json'
 const CHECKPOINT_VERSION = 1
@@ -33,7 +34,7 @@ export async function saveSourceCheckpoint(
     ...data,
     updatedAt: new Date().toISOString()
   }
-  await writeFile(path, JSON.stringify(next, null, 2), 'utf8')
+  await writeJsonAtomic(path, next)
 }
 
 export function createEmptySourceCheckpoint(sourceDir: string): SourceCheckpoint {

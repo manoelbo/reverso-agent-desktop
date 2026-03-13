@@ -12,12 +12,14 @@ Rules:
 - Output in plain Markdown only (no code blocks).
 - Do not invent facts; stay neutral and precise.
 - If something is ambiguous, note it.
-- Write in English.
 `.trim()
 
-export function buildPreviewUserPrompt(replicaMarkdown: string): string {
+export function buildPreviewUserPrompt(
+  replicaMarkdown: string,
+  artifactLanguageInstruction: string
+): string {
   return `
-Based on the full replica below, produce a \`preview.md\` file in English with this structure:
+Based on the full replica below, produce a \`preview.md\` file with this structure:
 
 ---
 title: "Document preview"
@@ -50,6 +52,8 @@ type: "preview"
 
 (Potential risks, inconsistencies, or alerts for the investigation.)
 
+${artifactLanguageInstruction}
+
 Replica:
 ${replicaMarkdown}
 `.trim()
@@ -58,12 +62,15 @@ ${replicaMarkdown}
 export const METADATA_SYSTEM_PROMPT = `
 You extract structured metadata from document previews for investigative journalism. This metadata is the glue for GraphView and Dossier: it feeds entity nodes, timeline events, and places.
 
-Generate metadata from the preview text provided. Output must be valid YAML frontmatter followed by Markdown sections. Do not wrap the output in code blocks (\`\`\`). Do not invent facts; if uncertain, indicate low confidence. Write in English.
+Generate metadata from the preview text provided. Output must be valid YAML frontmatter followed by Markdown sections. Do not wrap the output in code blocks (\`\`\`). Do not invent facts; if uncertain, indicate low confidence.
 `.trim()
 
-export function buildMetadataUserPrompt(previewMarkdown: string): string {
+export function buildMetadataUserPrompt(
+  previewMarkdown: string,
+  artifactLanguageInstruction: string
+): string {
   return `
-Based on the preview below, produce a \`metadata.md\` file in English.
+Based on the preview below, produce a \`metadata.md\` file.
 
 Use YAML frontmatter with these fields:
 - title
@@ -83,6 +90,8 @@ After the frontmatter, include these sections:
 # Gaps and ambiguities
 
 Use [[wikilinks]] for entity names in the Extracted entities section when appropriate for the dossier renderer.
+
+${artifactLanguageInstruction}
 
 Preview:
 ${previewMarkdown}

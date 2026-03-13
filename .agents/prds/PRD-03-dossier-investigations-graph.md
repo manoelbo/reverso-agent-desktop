@@ -11,6 +11,20 @@
 
 Este domínio é o **núcleo de conhecimento** do Reverso Agent. Aqui vivem as entidades (pessoas, grupos, lugares, eventos), as conexões entre elas (bidirectional links), as investigações com suas pistas (clues), e a visualização em grafo. Tudo é alimentado pelo processamento de Sources e orquestrado pelo Agent via Chat.
 
+## 1.1 Estado Real (Mar/2026)
+
+### Implementado agora
+- Estruturas de dossiê e investigação operacionais no Agent Lab filesystem (`dossier/**`, `investigation/**`).
+- Leads, allegations e findings com rastreabilidade e conclusão por inquiry.
+- Persistência em Markdown com validações de consistência antes de escrita.
+
+### Pendente principal
+- Fechar integração visual do dossiê/investigações no renderer com dados em tempo real.
+- Graph view completo (fullscreen + filtros + experiência final de navegação).
+
+### Legado / Transição
+- Partes deste PRD descrevem o alvo completo de UX/graph e não devem ser lidas como totalmente implementadas no app atual.
+
 ---
 
 ## 2. User Stories

@@ -9,119 +9,167 @@ export interface DigConclusion {
   updatedAt: string
 }
 
+export interface DigIncrementalConclusion {
+  summary: string
+  keyFindings: string[]
+  hypotheses: string[]
+  gaps: string[]
+}
+
 export interface DigSuggestedLine {
   title: string
   description: string
   rank: number
+  rationale: string
   relatedDocIds?: string[]
 }
 
-export interface DigFinalResult {
-  suggestedLines: DigSuggestedLine[]
-  comparisonWithExisting?: string
-  recommendation: string
+export interface DigLinesResult {
+  lines: DigSuggestedLine[]
 }
 
-export const DIG_SYSTEM_PROMPT = `
-Voce e um agente de jornalismo investigativo focado em descobrir leads e indícios para investigacoes.
+export interface DigComparedLine {
+  title: string
+  description: string
+  differentiation: string
+  rank: number
+}
 
-Sua tarefa e analisar resumos (previews) de documentos e, de forma incremental, ir acumulando conclusoes.
-Cada vez que receber um novo preview, compare com as conclusoes anteriores e atualize seu entendimento.
-Ao final, voce vai sugerir linhas investigativas (possiveis frentes de apuracao) ranqueadas por relevancia.
+export interface DigFinalResult {
+  topLines: DigComparedLine[]
+  recommendation: string
+  overlapNotes: string[]
+}
 
-Seja objetivo. Baseie-se apenas no que os previews mostram. Nao invente fatos.
-Retorne sempre texto claro em Markdown ou JSON conforme o prompt especifico de cada etapa.
+export type DigComparisonResult = DigFinalResult
+
+export function buildDigSystemPrompt(responseLanguageInstruction: string): string {
+  return `
+You are an investigative journalism agent focused on discovering leads and signals for investigation.
+
+Your task is to analyze document previews incrementally and continuously update conclusions.
+Each time you receive a new preview, compare it with prior conclusions and refine your understanding.
+At the end, suggest investigative lines ranked by relevance.
+
+Be objective. Use only what appears in the previews. Do not fabricate facts.
+Return clear Markdown or JSON depending on the stage-specific prompt.
+
+${responseLanguageInstruction}
 `.trim()
+}
 
 export function buildDigIncrementalPrompt(
-  previousConclusions: string,
+  previousConclusions: DigIncrementalConclusion | undefined,
   newPreview: string,
   documentName: string
 ): string {
-  if (!previousConclusions.trim()) {
+  if (!previousConclusions) {
     return `
-Analise o preview do documento abaixo e extraia conclusoes iniciais (resumo, achados principais).
+Analyze the document preview below and produce the first incremental conclusion.
 
-## Documento: ${documentName}
+## Document: ${documentName}
 
 ${newPreview}
 
-Retorne um bloco com:
-## Resumo
-Paragrafo curto do que se trata.
-
-## Achados principais
-Lista em tópicos dos pontos mais relevantes para uma investigacao.
+Return ONLY valid JSON:
+{
+  "summary": "short paragraph",
+  "keyFindings": ["...", "..."],
+  "hypotheses": ["possible explanation 1", "..."],
+  "gaps": ["missing evidence 1", "..."]
+}
 `.trim()
   }
   return `
-Voce ja tem conclusoes acumuladas da analise de documentos anteriores. Agora receba um novo preview e atualize suas conclusoes.
+You already have accumulated conclusions from previous document analysis. Now read a new preview and update those conclusions.
 
---- CONCLUSAO ANTERIOR ---
-${previousConclusions}
---- FIM CONCLUSAO ANTERIOR ---
+--- PREVIOUS CONCLUSION ---
+${JSON.stringify(previousConclusions, null, 2)}
+--- END PREVIOUS CONCLUSION ---
 
---- NOVO DOCUMENTO: ${documentName} ---
+--- NEW DOCUMENT: ${documentName} ---
 ${newPreview}
---- FIM NOVO DOCUMENTO ---
+--- END NEW DOCUMENT ---
 
-Atualize o bloco de conclusao: mantenha o que continua valido, incorpore achados do novo documento, destaque contradicoes ou reforcos.
-Retorne um unico bloco com:
-## Resumo
-Paragrafo atualizado.
+Update the conclusion object:
+- keep what remains valid,
+- incorporate findings from the new document,
+- include contradictions/reinforcements in keyFindings,
+- update hypotheses and gaps.
 
-## Achados principais
-Lista atualizada em topicos.
+Return ONLY valid JSON:
+{
+  "summary": "updated paragraph",
+  "keyFindings": ["...", "..."],
+  "hypotheses": ["...", "..."],
+  "gaps": ["...", "..."]
+}
 `.trim()
 }
 
-export function buildDigLinesPrompt(conclusions: string): string {
+export function buildDigLinesPrompt(conclusions: DigIncrementalConclusion): string {
   return `
-Com base nas conclusoes acumuladas abaixo, liste possiveis linhas investigativas (frentes de apuracao que um jornalista poderia seguir).
+Based on the accumulated conclusions below, list possible investigative lines.
 
---- CONCLUSAO ACUMULADA ---
-${conclusions}
---- FIM ---
+--- ACCUMULATED CONCLUSION ---
+${JSON.stringify(conclusions, null, 2)}
+--- END ---
 
-Para cada linha sugerida, informe:
-- Titulo curto
-- Descricao em 1-2 frases do que seria investigado e por que e relevante
-- Ranque de 1 (mais importante) a N
+Rules:
+- Return 3 to 6 lines.
+- Rank starts at 1 and increases without duplicates.
+- Keep each description objective and evidence-oriented.
 
-Retorne uma lista numerada no formato:
-1. **Titulo** — Descricao. (Rank: 1)
-2. **Titulo** — Descricao. (Rank: 2)
-...
+Return ONLY valid JSON:
+{
+  "lines": [
+    {
+      "title": "short title",
+      "description": "1-2 sentence description",
+      "rank": 1,
+      "rationale": "why this matters now",
+      "relatedDocIds": ["doc-1", "doc-2"]
+    }
+  ]
+}
 `.trim()
 }
 
 export function buildDigRankAndComparePrompt(
-  suggestedLinesText: string,
+  suggestedLines: DigLinesResult,
   existingLeadsMarkdown: string
 ): string {
   return `
-Voce sugeriu as seguintes linhas investigativas a partir dos previews analisados:
+You suggested the following investigative lines from analyzed previews:
 
---- SUGESTOES ---
-${suggestedLinesText}
---- FIM SUGESTOES ---
+--- SUGGESTIONS ---
+${JSON.stringify(suggestedLines, null, 2)}
+--- END SUGGESTIONS ---
 
-Agora compare com os leads que ja existem no workspace:
+Now compare them with the leads that already exist in the workspace:
 
---- LEADS EXISTENTES ---
-${existingLeadsMarkdown || '(Nenhum lead registrado ainda.)'}
---- FIM LEADS EXISTENTES ---
+--- EXISTING LEADS ---
+${existingLeadsMarkdown || '(No leads recorded yet.)'}
+--- END EXISTING LEADS ---
 
-Tarefas:
-1. Escolha as 3 linhas mais promissoras entre suas sugestoes (evitando duplicar o que ja existe).
-2. Para cada uma das 3, escreva um paragrafo curto explicando por que e relevante e como se diferencia dos leads existentes (se houver).
-3. Ao final, escreva uma recomendacao em uma linha: qual dessas 3 o usuario deveria criar primeiro como lead e por quê.
+Tasks:
+1. Select the 3 most promising lines from your suggestions (avoid duplicating what already exists).
+2. For each of the 3, write a short paragraph explaining why it matters and how it differs from existing leads (if any).
+3. Provide overlap notes about potential duplicates or conflicts.
+4. End with a one-line recommendation indicating which lead to create first and why.
 
-Formato de saida (use os titulos exatos):
-## Linhas sugeridas (top 3)
-(para cada uma: titulo, descricao, diferencial)
-
-## Recomendacao
-Uma frase orientando o proximo passo (ex.: "Para criar um lead, use o comando /create-lead com a ideia X.").
+Return ONLY valid JSON:
+{
+  "topLines": [
+    {
+      "title": "line title",
+      "description": "line description",
+      "differentiation": "how this differs from existing leads",
+      "rank": 1
+    }
+  ],
+  "recommendation": "one sentence recommendation",
+  "overlapNotes": ["note 1", "note 2"]
+}
 `.trim()
 }

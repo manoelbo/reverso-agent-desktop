@@ -14,6 +14,7 @@ export interface StepPreviewParams {
   sourceFileName: string
   artifactDir: string
   model: string
+  artifactLanguageInstruction?: string
   client: OpenRouterClient
   timeoutMs?: number
 }
@@ -36,7 +37,9 @@ export async function runStepPreview(params: StepPreviewParams): Promise<StepPre
     sourceFileName: params.sourceFileName,
     model: params.model,
     systemPrompt: STANDARD_PREVIEW_SYSTEM_PROMPT,
-    userPrompt: STANDARD_PREVIEW_USER_PROMPT,
+    userPrompt: [STANDARD_PREVIEW_USER_PROMPT, params.artifactLanguageInstruction]
+      .filter(Boolean)
+      .join('\n\n'),
     client: params.client,
     timeoutMs: params.timeoutMs ?? 180_000
   })

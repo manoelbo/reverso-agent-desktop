@@ -22,14 +22,10 @@ test('parseCreateLeadResponse aceita JSON com code fence', () => {
   const out = parseCreateLeadResponse(raw)
   assert.equal(out.codename, 'x')
   assert.equal(out.title, 'T')
-  assert.equal(out.inquiryPlan.gatherFindings[0], 'Sem detalhamento fornecido pela IA')
 })
 
-test('parseCreateLeadResponse retorna fallback para JSON invalido', () => {
-  const out = parseCreateLeadResponse('not json at all')
-  assert.equal(out.codename, 'investigacao')
-  assert.equal(out.title, 'Lead de investigacao')
-  assert.ok(Array.isArray(out.inquiryPlan.gatherFindings))
+test('parseCreateLeadResponse falha para JSON invalido', () => {
+  assert.throws(() => parseCreateLeadResponse('not json at all'))
 })
 
 test('normalizeLeadSlug normaliza slug sem prefixo lead-', () => {
@@ -42,20 +38,20 @@ test('normalizeLeadSlug remove prefixo lead- quando presente', () => {
 })
 
 test('normalizeLeadSlug retorna investigacao para string vazia apos slugify', () => {
-  assert.equal(normalizeLeadSlug('---'), 'investigacao')
+  assert.equal(normalizeLeadSlug('---'), 'investigation')
 })
 
 test('buildCreateLeadSystemPrompt inclui manifesto de tools', () => {
   const manifest = getToolManifestForPrompt()
   const prompt = buildCreateLeadSystemPrompt(manifest)
-  assert.match(prompt, /Ferramentas disponiveis do agente:/)
+  assert.match(prompt, /Available agent tools:/)
   assert.match(prompt, /createDossierEntity/)
   assert.match(prompt, /Inquiry Plan/)
 })
 
 test('buildCreateLeadUserPrompt inclui resumo de source quando fornecido', () => {
   const prompt = buildCreateLeadUserPrompt('cartel de licitantes', '1. contrato-a.md\n2. contrato-b.md')
-  assert.match(prompt, /Documentos\/sources disponiveis para esta investigacao:/)
+  assert.match(prompt, /Available sources for this investigation:/)
   assert.match(prompt, /contrato-a\.md/)
   assert.match(prompt, /cartel de licitantes/)
 })

@@ -1,6 +1,6 @@
 # Reverso Agent — PRD Master
 
-> **Versão:** 0.1 (MVP)
+> **Versão:** 0.2 (estado real + alvo)
 > **Autor:** Manoel Brasil Orlandi
 > **Data:** Março 2026
 > **Deadline MVP:** ~13 de Março de 2026 (1 semana, agentic coding)
@@ -95,58 +95,36 @@ O Reverso Agent é dividido em **5 domínios** que se interconectam:
 
 ---
 
-## 5. Escopo do MVP (v0.1)
+## 5. Escopo Atual (Mar/2026) — Implementado vs Pendente
 
-### ✅ No escopo
+### Implementado (estado real)
 
-**Funcionalidade principal:**
-- ✅ Workspaces isolados ("Investigation Desk")
-- ✅ Ingestão de documentos via drag-and-drop
-- ✅ Processamento de PDFs via LLM (replica.md page-by-page)
-- ✅ Geração de preview.md e metadata.md
-- ✅ Dossiê com entidades: People, Groups, Places, Timeline
-- ✅ Investigative Annotations com rastreabilidade
-- ✅ Linhas investigativas com Clues
-- ✅ Chat interativo com streaming, modos Q/P/A
-- ✅ Menções @source, @dossier, !investigation
-- ✅ Slash commands (/create_line, /summarize, /web_search, etc.)
-- ✅ Graph View (widget flutuante + fullscreen)
-- ✅ Bidirectional links [[wikilinks]]
-- ✅ Verificação manual de status (verified/unverified/rejected)
-- ✅ Reverso Markdown com blocos custom (:::annotation, :::clue, :::event)
-- ✅ Token counter com sugestão de summarize
+**Agent Lab (CLI, `lab/agent`)**
+- Entrada conversacional unificada: `pnpm reverso agent --text/--prompt` e fallback raiz `pnpm reverso --text/--prompt`.
+- Fluxo stateful por sessão e intenção: `init -> deep-dive (alias legado: dig) -> deep-dive-next -> create-lead -> inquiry`.
+- Deep-dive com geração de leads draft, deduplicação (exata + semântica básica), seleção por índice/slug/título.
+- Roteamento híbrido (heurística + fallback LLM com JSON estrito) para continuidade em linguagem natural.
+- Inquiry com `plan -> execute -> verify` (PEV), orçamento/stop_reason, evidence gate e pre-write validation.
+- Persistência editorial local em Markdown/JSON dentro de `lab/agent/filesystem`.
 
-**Técnico:**
-- ✅ Electron com context isolation e preload seguro
-- ✅ OpenRouter como único provider (API key simples)
-- ✅ Model routing: 3 modelos por tarefa (processing, writing, reasoning)
-- ✅ Fontes IBM Plex bundled localmente
+**App Electron (`src/`)**
+- Shell visual base (Application Shell 9), sidebar/viewer/activity bar e painéis iniciais.
+- Estrutura de preload e schema compartilhado.
+- Componentização progressiva da UI (ex.: `AppSidebar` quebrado em subcomponentes).
 
-**Distribuição:**
-- ✅ Build para macOS (DMG) — macOS first
-- ❌ Build para Windows (NSIS) — pós-MVP
-- ❌ Build para Linux (AppImage) — pós-MVP
+### Pendente (funcionalidades principais)
 
-**Simplificações para 1 semana:**
-- ✅ Chat sessions em memória (sem persistência no SQLite no MVP)
-- ✅ Web research via fetch + Cheerio (sem Tavily/API externa)
-- ✅ Graph view pode ser simplificado (widget only, sem fullscreen filters no MVP)
+- Chat operacional completo no renderer (streaming real, action pills funcionais, contexto vivo com tools).
+- Integração plena app <-> engine do agente (IPC/serviços/main) além do laboratório CLI.
+- Graph View completo (fullscreen com filtros e interações avançadas) e integração real com dados.
+- Alinhamento final de iconografia e idioma da UI em todas as telas.
+- E2E conversacional ponta-a-ponta com validação de artefatos no app.
 
-### ❌ Fora do escopo (v0.1)
+### Legado / Transição
 
-- ❌ Autenticação direta com providers nativos (Anthropic, Google)
-- ❌ Multi-provider setup (somente OpenRouter no MVP)
-- ❌ CSV/tabela extraction como feature dedicada
-- ❌ Auto-update (release manual no MVP)
-- ❌ Busca semântica com embeddings
-- ❌ Edição direta de Markdown pelo usuário
-- ❌ Importação de URLs / monitoramento de pastas
-- ❌ Exportação de dossiê (PDF, HTML)
-- ❌ Internacionalização (UI em inglês no MVP)
-- ❌ Colaboração multi-usuário
-- ❌ Chat persistence (sessões descartáveis no MVP)
-- ❌ Builds Windows/Linux (macOS first)
-- ❌ SERP API / Tavily (web research simplificado)
+- `dig` permanece apenas como alias de compatibilidade para `deep-dive`.
+- Descrições antigas de “chat-first pleno no app” e “graph completo” passam a ser **alvo**, não status concluído.
+- Referências a caminhos de saída em `lab/agent/output/...` foram descontinuadas; usar `lab/agent/filesystem/...`.
 
 ---
 
@@ -164,6 +142,7 @@ O Reverso Agent é dividido em **5 domínios** que se interconectam:
 | Application Shell | Application Shell 9 (IDE-Style File Explorer) | ✅ Decidido |
 | Tema | Reverso 0 (tweakcn) | ✅ Decidido |
 | Fontes | IBM Plex Sans Thai, Mono, Sans JP | ✅ Decidido |
+| Ícones | Phosphor Icons (`@phosphor-icons/react`) | ✅ Decidido |
 | AI gateway | OpenRouter (v0.1) | ✅ Decidido |
 | Cores | OKLCH-based tokens | ✅ Decidido |
 
@@ -334,7 +313,7 @@ O bloco **Application Shell 9** ("IDE-Style File Explorer Shell") é a base estr
 
 Esse padrão replica o layout do VS Code, que é ideal para o Reverso Agent por ser um app de gerenciamento de arquivos/documentos com múltiplos painéis.
 
-**Dependências do bloco:** `button`, `collapsible`, `drawer`, `scroll-area`, `sidebar` (shadcn/ui) + `lucide-react`.
+**Dependências do bloco:** `button`, `collapsible`, `drawer`, `scroll-area`, `sidebar` (shadcn/ui) + `@phosphor-icons/react`.
 
 ### Configuração do Registry
 
@@ -416,7 +395,7 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 │  │  │   tree,    │  │   Markdown   │  │   input,        │ │ │
 │  │  │   drag &   │  │   renderer,  │  │   action pills, │ │ │
 │  │  │   drop,    │  │   Graph View │  │   cmdk menu,    │ │ │
-│  │  │   status)  │  │   widget)    │  │   modes Q/P/A)  │ │ │
+│  │  │   status)  │  │   widget)    │  │   modes Ask/Plan/Agent)  │ │ │
 │  │  └────────────┘  └──────────────┘  └─────────────────┘ │ │
 │  │                                                          │ │
 │  │  State: Zustand stores (workspace, viewer, chat, graph)  │ │
@@ -427,123 +406,35 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 
 ---
 
-## 8. Fases de Implementação (1 semana — agentic coding)
+## 8. Estado de Implementação por Domínio
 
-> **Contexto:** Solo developer usando agentic coding (Cursor/Claude). A timeline
-> de 1 semana exige foco brutal no essencial. Cada dia tem um objetivo claro.
-> Build para macOS only. Chat sessions em memória. Web research simplificado.
-
-### Dia 1–2 — Fundação (Electron + Layout + Infra)
-
-**Objetivo:** App Electron funcional com layout completo e infraestrutura base.
-
-- ✅ Setup electron-vite + React + TypeScript + Tailwind
-- ✅ Configurar shadcn/ui (`pnpm dlx shadcn@latest init`)
-- ✅ Configurar shadcnblocks como registry estendido em `components.json`
-- ✅ Instalar tema Reverso 0 (`pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmmfid9kr000104jufj121z63`)
-- ✅ Instalar Application Shell 9 (`@shadcnblocks/application-shell9`) como base do layout
-- ✅ Fontes IBM Plex bundled
-- ✅ Frameless window com drag regions (macOS traffic lights)
-- ✅ Layout master baseado no Application Shell 9 (Activity Bar + File Explorer Sidebar + Viewer + Chat)
-- ✅ IPC tipado com Zod (shared/ipc-schema.ts)
-- ✅ better-sqlite3 + Kysely (schema base: sources, entities, backlinks)
-- ✅ File system manager (workspace CRUD + chokidar watcher)
-- ✅ Zustand stores (workspace, viewer, chat)
-- ✅ Sidebar com file tree dinâmico
-- ✅ Viewer com Reverso Markdown renderer (react-markdown + remark-directive + gray-matter)
-- ✅ Blocos custom: :::annotation, :::clue, :::event, [[wikilinks]]
-- ✅ Onboarding screen (criar Investigation Desk + API key + tema)
-
-**Validação:** App abre, sidebar mostra file tree do workspace, viewer renderiza MD com blocos custom, onboarding funciona.
-
-### Dia 3–4 — Sources + AI Engine + Chat
-
-**Objetivo:** Processamento de documentos via LLM + chat com streaming funcionando end-to-end.
-
-- ✅ Drag-and-drop de arquivos para Sources (sidebar + viewer)
-- ✅ OpenAI SDK apontando para OpenRouter configurado
-- ✅ Pipeline PDF: pdfjs-dist → render pages como imagens → vision model → replica.md
-- ✅ Geração de preview.md e metadata.md via LLM
-- ✅ Status de processamento com badges (○ ⟳ ✓) na sidebar
-- ✅ Chat panel com streaming (react-mentions-ts input)
-- ✅ Menções @source no chat (autocomplete básico)
-- ✅ Mode toggle Q/P/A (Question mode funcional, Agent mode básico)
-- ✅ Source Detail View no viewer (preview + metadata + link para original)
-- ✅ Processamento de imagens via vision model
-
-**Validação:** Drag PDF → processamento automático → replica/preview/metadata gerados → sidebar atualizada → chat pergunta sobre o documento e responde com contexto.
-
-### Dia 5–6 — Agent + Dossier + Investigations
-
-**Objetivo:** Agent loop completo que popula dossiê e cria investigações.
-
-- ✅ Agent tools (read, write, list, search, createEntity, addAnnotation, addClue, createInvestigation, createTimelineEvent)
-- ✅ Agent loop: plan → tool call → observe → iterate (OpenAI SDK + while loop manual)
-- ✅ Agent Mode funcional (cria/modifica arquivos autonomamente)
-- ✅ Planning Mode (apresenta plano, espera aprovação)
-- ✅ Action pills no chat (mostra o que o agente modificou)
-- ✅ Dossiê: entidades People, Groups, Places, Timeline
-- ✅ Investigative Lines + Clues
-- ✅ Verification toggle (hover-based status change)
-- ✅ Connections block (backlinks via SQLite)
-- ✅ Menções @dossier e !investigation no chat
-- ✅ Slash commands (/create_line, /summarize) via cmdk
-- ✅ Token counter
-- ✅ MiniSearch para autocomplete
-
-**Validação:** Importar contratos → pedir ao agente "analise esses documentos" → agente cria dossiê com pessoas, empresas, annotations, clues → tudo rastreável.
-
-### Dia 7 — Graph View + Polish + Build
-
-**Objetivo:** Graph view funcional, polish geral, build macOS.
-
-- ✅ Graph View widget (react-force-graph-2d, bottom-right)
-- ✅ Nós por tipo com cores/ícones
-- ✅ Clicar nó → navegar para entidade
-- ✅ Web search básico (fetch + Cheerio, sem API externa)
-- ✅ Settings (modelos, tema, token limit)
-- ✅ Polish: navegação back/forward, breadcrumbs, light/dark toggle
-- ✅ Source reference links →[source] clicáveis
-- ✅ Table of Contents para docs longos
-- ✅ Build macOS (DMG) via electron-builder
-- ✅ README básico
-
-**Validação:** App completo instalável no macOS, workflow end-to-end funcional.
-
-### Pós-MVP (Semana 2+)
-
-- Graph View fullscreen com filtros e customização visual
-- Chat persistence (SQLite)
-- Batch processing com estimativa de custo
-- Builds Windows + Linux
-- Testes (Vitest + Playwright E2E)
-- Auto-update via electron-updater
-- Web research via API (Tavily)
-- /check_annotations, /web_search completos
-- Context summarization (/summarize funcional)
+| Domínio | Implementado agora | Pendente principal |
+|---|---|---|
+| Workspace / Infra / AI | Base Electron + preload + schema compartilhado; Agent Lab funcional em `lab/agent` | Integrar engine do agente ao main process com contratos estáveis |
+| Sources | Pipeline de processamento operacional no Agent Lab (standard/deep, checkpoint, fila) | Integrar fluxo completo na UI final do app |
+| Dossier / Investigations | Geração e manutenção de artefatos Markdown (`dossier`, `investigation`, `leads`, `allegations`, `findings`) | Navegação e operações plenas no renderer conectadas ao estado real |
+| Chat / Agent | Roteamento conversacional stateful, deep-dive-next, PEV, evidence gate, pre-write validation | Chat runtime completo no renderer (streaming + tools + actions reais) |
+| UI / Screens | Shell e componentes base existentes | Polimento de UX final, alinhamento de idioma/iconografia e graph completo |
 
 ---
 
-## 9. Critérios de Sucesso do MVP
+## 9. Critérios de Sucesso (estado atual)
 
 ### Funcionais
-- ✅ Jornalista consegue criar workspace, importar documentos, e processá-los via LLM
-- ✅ PDFs são convertidos em replica.md com fidelidade page-by-page
-- ✅ Agente cria e popula dossiê automaticamente com entidades e annotations
-- ✅ Toda annotation/clue tem rastreabilidade para o documento original
-- ✅ Graph view mostra conexões entre entidades, sources e investigations
-- ✅ Chat opera nos 3 modos (Q/P/A) com streaming
+- ✅ Fluxo investigativo completo funciona no Agent Lab CLI com linguagem natural e estado persistido.
+- ✅ Ingestão/processamento e geração de artefatos investigativos são rastreáveis no filesystem local.
+- ✅ Inquiry com validações (PEV + evidence gate + pre-write) produz resultado auditável.
+- ⏳ Chat e orquestração equivalentes no app renderer ainda estão em evolução.
+- ⏳ Graph view de produção (fullscreen + filtros) ainda não está fechado.
 
 ### Qualidade
-- ✅ App inicia em < 3 segundos
-- ✅ Processamento de PDF de 100 páginas completa em < 5 minutos
-- ✅ UI responsiva durante processamento (não trava)
-- ✅ Zero dados enviados para servidores além do provider de AI escolhido
+- ✅ Typecheck e suíte de testes focada do Agent Lab estão operacionais.
+- ✅ Saídas possuem validação estrutural e trilha de evidência.
+- ⏳ Necessário ampliar testes E2E de conversação e integração app<->agent.
 
 ### UX
-- ✅ Persona "Linn" (tech baixa) consegue completar workflow básico sem documentação
-- ✅ Feedback visual claro em todas as operações do agente
-- ✅ Rastreabilidade é acessível em 1 clique (annotation → source original)
+- ✅ CLI fornece feedback guiado por etapa e próximo passo.
+- ⏳ UX final no app desktop (chat-first real, ações contextuais e graph completo) permanece como foco principal.
 
 ---
 
@@ -584,6 +475,23 @@ O projeto usa o **shadcn MCP** (Model Context Protocol) para que o agente de cod
 - **v0.3:** Multi-provider (Anthropic, Google direto), extração de tabelas para CSV, Operating Modes avançados
 - **v0.4:** Busca semântica com embeddings, dossier customization, enriquecimento web contextual
 - **v0.5+:** Auto-update, exportação de dossiê, internacionalização, plugins/extensões, colaboração
+
+## 12.1 Gaps Prioritários (P0 / P1 / P2)
+
+### P0 (crítico)
+- Integrar o núcleo do agente (`lab/agent`) ao runtime principal do app com contratos IPC estáveis.
+- Implementar chat operacional no renderer com streaming real, execução de ações e contexto vivo.
+- Garantir consistência entre estado de sessão/artefatos no CLI e no app (single source of truth).
+
+### P1 (alto)
+- Fechar graph view de produção (fullscreen, filtros, navegação consistente).
+- Cobertura E2E para fluxos conversacionais completos.
+- Revisão completa de linguagem da UI e coerência de iconografia.
+
+### P2 (médio)
+- Hardening de concorrência/locks em operações de sessão/artefatos.
+- Melhorias de observabilidade e telemetria de execução do agente.
+- Recursos avançados (busca semântica, exportações, auto-update, colaboração).
 
 ---
 

@@ -14,6 +14,22 @@ Este domínio especifica **como o usuário interage com o Reverso Agent**: layou
 
 Os domínios anteriores (PRD-01 a PRD-04) cobrem **o que** o sistema faz. Este PRD cobre **como** o usuário experimenta isso.
 
+## 1.1 Estado Real de UI (Mar/2026)
+
+### Implementado agora
+- Shell base de app com Activity Bar, Sidebar, Viewer e painel de chat inicial.
+- Componentização incremental em `src/renderer/src/components/app/**`.
+- Base visual e design tokens ativos.
+
+### Pendente principal
+- Chat renderer com execução real do agente (paridade com Agent Lab).
+- Graph View full-featured e fluxos de navegação finais.
+- Consolidação completa do Chat-First Principle em todas as ações.
+
+### Legado / Transição
+- Este PRD ainda contém partes aspiracionais do desenho inicial.
+- Em conflitos de status, considerar o código de `src/renderer/src/**` como fonte de verdade de implementação atual.
+
 ---
 
 ## 2. Referências de Design
@@ -39,6 +55,12 @@ O layout master é construído sobre o bloco **Application Shell 9** ("IDE-Style
 - **Dark mode nativo** — design dark-friendly com highlights em seleção
 
 O Reverso Agent adapta esse shell adicionando o **Chat Panel** como terceira zona persistente à direita.
+
+### 2.2 Iconografia padrão
+
+- Padrão desejado: **Phosphor Icons** (`@phosphor-icons/react`).
+- Estado atual: existem componentes legados usando outros sets de ícones.
+- Regra de transição: novos componentes/refactors devem convergir para Phosphor.
 
 ---
 
@@ -86,8 +108,8 @@ Baseada no Application Shell 9. Barra vertical estreita (~48px) com ícones de m
 
 ### 3.3 Chat (direita)
 
-- Sempre visível; pode ser expandido (viewer encolhe proporcionalmente)
-- Nunca totalmente oculto
+- Visível por padrão; pode ser expandido ou ocultado por toggle no header
+- Quando aberto, encolhe o viewer proporcionalmente
 - Estado mínimo: input bar + mode indicator
 - Largura expandida: ~380px
 
@@ -422,7 +444,7 @@ A mudança de status é salva diretamente no campo `status` do bloco `:::annotat
 
 ## 8. Sources — Upload & Management
 
-Sources são adicionadas **exclusivamente via drag and drop**. Sem file picker dialog, sem monitoramento de pasta, sem import de URL no v0.1.
+Sources devem priorizar drag-and-drop. Enquanto a UX final não estiver fechada, pode coexistir com ações auxiliares de upload no app.
 
 ### 8.1 Sources Panel (no Viewer)
 
@@ -490,7 +512,7 @@ Compacto, ancorado no **bottom-right** do Viewer. Paira sobre o conteúdo. Visí
 - Atualiza dinamicamente ao navegar
 - Nós são clicáveis: navega para entidade no Viewer
 
-### 9.2 Fullscreen
+### 9.2 Fullscreen (pendente)
 
 Clicar "Expand" substitui o conteúdo do Viewer com o grafo completo:
 
@@ -502,14 +524,12 @@ Clicar "Expand" substitui o conteúdo do Viewer com o grafo completo:
 - Botão "Exit fullscreen" retorna ao estado anterior do Viewer
 - Também acessível pelo botão no footer da sidebar (`⤢ Open Full Graph`)
 
-### 9.3 MVP Simplification
+### 9.3 Status consolidado
 
 Para o MVP de 1 semana:
-- ✅ Widget flutuante (react-force-graph-2d, bottom-right)
-- ✅ Nós por tipo com cores/ícones
-- ✅ Clicar nó → navegar para entidade
-- ❌ Fullscreen com filtros avançados → pós-MVP
-- ❌ Customização visual (color-coding por tags) → pós-MVP
+- ✅ Widget/estrutura de graph prevista no layout
+- ⏳ Fullscreen com filtros avançados
+- ⏳ Customização visual (color-coding por tags)
 
 ---
 
@@ -528,9 +548,9 @@ Lista completa de todas as telas e estados do aplicativo:
 | 7 | **Dossier (tree navigation)** | Folder tree (People, Groups, Places, Timeline) com Graph View widget | PRD-03 |
 | 8 | **Dossier (entity detail)** | Markdown renderizado com `[[backlinks]]`, annotations, e Connections block | PRD-03 |
 | 9 | **Graph View (widget)** | Grafo contextual compacto + "On this page" list, embedded no corner do viewer | PRD-03 |
-| 10 | **Graph View (fullscreen)** | Grafo completo da investigação com filtros por type/tag/color + zoom + click-to-navigate | PRD-03 |
+| 10 | **Graph View (fullscreen)** | Grafo completo da investigação com filtros por type/tag/color + zoom + click-to-navigate (pendente) | PRD-03 |
 | 11 | **Settings** | API Key, seleção de modelo por task, theme toggle, token limit configuration | PRD-01 |
-| 12 | **Chat** | Painel always-present à direita com mode toggle, token counter, action pills, context bar | PRD-04 |
+| 12 | **Chat** | Painel à direita com mode toggle Ask/Plan/Agent, token counter, action pills, context bar | PRD-04 |
 
 ---
 
@@ -548,7 +568,7 @@ Lista completa de todas as telas e estados do aplicativo:
 - ✅ Expandir/colapsar a sidebar
 - ✅ Expandir/colapsar o chat
 - ✅ Alternar entre light e dark mode
-- ✅ Alternar modo do chat (Q/P/A)
+- ✅ Alternar modo do chat (Ask/Plan/Agent)
 - ✅ Interagir com o Graph View (zoom, pan, clicar nós)
 
 ### O que o usuário CANNOT fazer diretamente (deve usar chat)
@@ -768,7 +788,7 @@ Os componentes de produto específicos estão definidos no doc de referência:
 | `VerificationToggle` | `components/app/` | Hover-based status toggle para clues/annotations |
 | `ActionPill` | `components/app/` | Badges clicáveis de modificação no chat |
 | `TokenCounter` | `components/app/` | Display de tamanho de contexto real-time |
-| `ModeToggle` | `components/app/` | Seletor Q/P/A dentro do Chat Panel |
+| `ModeToggle` | `components/app/` | Seletor Ask/Plan/Agent dentro do Chat Panel |
 | `SourceCard` | `components/app/` | Entrada de arquivo com badge de status |
 | `ConnectionsBlock` | `components/app/` | Seção de backlinks para entidades |
 | `ContextualActionBar` | `components/app/` | Barra de ações por tipo de conteúdo |

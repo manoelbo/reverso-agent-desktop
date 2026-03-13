@@ -18,6 +18,8 @@ export interface LabArgs {
   debugOpenRouter?: boolean
   /** Preferência de roteamento OpenRouter: "latency" (mais rápido), "throughput" ou "price". */
   providerSort?: 'latency' | 'throughput' | 'price'
+  /** Language for generated artifacts. "source" keeps source document language. */
+  artifactLanguage?: 'source' | 'en' | 'pt' | 'es' | 'fr' | 'de' | 'it'
 }
 
 export interface LabConfig extends LabArgs {

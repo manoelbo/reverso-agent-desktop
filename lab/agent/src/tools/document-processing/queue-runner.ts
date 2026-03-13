@@ -3,7 +3,7 @@
  * Fila sequencial: processa documentos da pasta source um a um, atualizando checkpoint global.
  */
 import path from 'node:path'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import { access } from 'node:fs/promises'
 import {
   loadSourceCheckpoint,
@@ -18,6 +18,8 @@ import { runStandardProcess } from './standard/pipeline.js'
 import { resolveLabPaths } from '../../core/paths.js'
 import { createFeedbackController, type FeedbackMode } from '../../cli/renderer.js'
 import type { QueueMode, OpenRouterUsage } from './types.js'
+import type { ArtifactLanguage } from '../../core/language.js'
+import { writeJsonAtomic, writeUtf8Atomic } from '../../core/fs-io.js'
 
 const DOC_MAX_ATTEMPTS = 3
 const DOC_RETRY_BASE_MS = 1500
@@ -68,6 +70,7 @@ export interface QueueRunnerOptions {
   providerSort?: 'latency' | 'throughput' | 'price'
   debugOpenRouter?: boolean
   feedbackMode?: FeedbackMode
+  artifactLanguage?: ArtifactLanguage
 }
 
 function nowIso(): string {
@@ -176,10 +179,7 @@ export async function runQueue(options: QueueRunnerOptions): Promise<void> {
       f.resumeFromCheckpoint = false
     }
   }
-  const toProcess = pdfs.filter(
-    (f) =>
-      f.status === 'not_processed' || (f.status === 'failed' && f.resumeFromCheckpoint)
-  )
+  const toProcess = pdfs.filter((f) => f.status === 'not_processed' || f.status === 'failed')
 
   if (toProcess.length === 0) {
     console.log('Nenhum documento pendente para processar.')
@@ -239,8 +239,8 @@ export async function runQueue(options: QueueRunnerOptions): Promise<void> {
   }
   const persistPlan = async (): Promise<void> => {
     recalcPlanSummary(plan)
-    await writeFile(planJsonPath, JSON.stringify(plan, null, 2), 'utf8')
-    await writeFile(planMdPath, buildPlanMarkdown(plan), 'utf8')
+    await writeJsonAtomic(planJsonPath, plan)
+    await writeUtf8Atomic(planMdPath, buildPlanMarkdown(plan))
   }
   await persistPlan()
   feedback?.step(
@@ -316,6 +316,7 @@ export async function runQueue(options: QueueRunnerOptions): Promise<void> {
             dossierTimelineDir: labPaths?.dossierTimelineDir ?? path.join(dossierDir, 'timeline'),
             apiKey: options.apiKey,
             model: options.model,
+            artifactLanguage: options.artifactLanguage ?? 'source',
             resume: options.resume,
             onStepStart: (step) => {
               console.log(`  [${step}] iniciando...`)
@@ -377,6 +378,7 @@ export async function runQueue(options: QueueRunnerOptions): Promise<void> {
             reportPath,
             model: options.model,
             previewModel: options.previewModel,
+            artifactLanguage: options.artifactLanguage ?? 'source',
             maxPages: options.maxPages,
             chunkPages: options.chunkPages,
             concurrency: options.concurrency,
@@ -434,7 +436,7 @@ export async function runQueue(options: QueueRunnerOptions): Promise<void> {
             warnings: [],
             usage: lastReport.usage ?? {}
           }
-          await writeFile(reportPath, JSON.stringify(runReport, null, 2), 'utf8')
+          await writeJsonAtomic(reportPath, runReport)
           feedback?.fileChange({
             path: relPath(reportPath),
             changeType: 'edited',

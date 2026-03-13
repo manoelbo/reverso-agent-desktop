@@ -1,38 +1,26 @@
-"use client";
+"use client"
 
+import * as React from "react"
 import {
-  ChevronRight,
-  File,
-  Folder,
-  GitBranch,
-  History,
-  MessageSquare,
-  PanelRight,
-  Play,
-  Plus,
-  Search,
-  Settings,
-  User,
-} from "lucide-react";
-import * as React from "react";
+  CaretRight,
+  ChatsCircle,
+  Files,
+  FolderOpen,
+  GearSix,
+  Graph,
+  MagnifyingGlass,
+  SidebarSimple,
+  Sparkle,
+} from "@phosphor-icons/react"
 
-import logoUrl from "@/assets/logo-gray-transparent.svg";
-
-import { cn } from "@/lib/utils";
-
-import { Button } from "@/components/ui/button";
+import logoUrl from "@/assets/logo-gray-transparent.svg"
+import { Button } from "@/components/ui/button"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from "@/components/ui/collapsible"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sidebar,
   SidebarContent,
@@ -41,676 +29,394 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
-  SidebarInset,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
   SidebarProvider,
-} from "@/components/ui/sidebar";
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
-type SidebarModule = {
-  id: string;
-  label: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-};
+type ReversoModule = "explorer" | "search" | "graph" | "settings"
 
-const sidebarModules: SidebarModule[] = [
-  { id: "search", label: "Search", icon: Search },
-  { id: "explorer", label: "Explorer", icon: File },
-  { id: "git", label: "Source Control", icon: GitBranch },
-];
+type ModuleItem = {
+  id: ReversoModule
+  label: string
+  icon: typeof Files
+  placement?: "top" | "bottom"
+}
 
-const changesData = [
-  { file: "README.md", state: "M" },
-  { file: "api/hello/route.ts", state: "U" },
-  { file: "app/layout.tsx", state: "M" },
-];
+type SidebarSection = {
+  title: string
+  items: string[]
+  icon: typeof FolderOpen
+}
 
-type TreeItem = string | TreeItem[];
+const modules: ModuleItem[] = [
+  { id: "explorer", label: "Explorer", icon: Files },
+  { id: "search", label: "Search", icon: MagnifyingGlass },
+  { id: "graph", label: "Graph", icon: Graph },
+  { id: "settings", label: "Settings", icon: GearSix, placement: "bottom" },
+]
 
-const fileTreeData: TreeItem[] = [
-  [
-    "app",
-    [
-      "api",
-      ["hello", ["route.ts"]],
-      "page.tsx",
-      "layout.tsx",
-      ["blog", ["page.tsx"]],
-    ],
+const moduleMeta: Record<ReversoModule, { label: string }> = {
+  explorer: {
+    label: "Explorer",
+  },
+  search: {
+    label: "Search",
+  },
+  graph: {
+    label: "Graph",
+  },
+  settings: {
+    label: "Settings",
+  },
+}
+
+const moduleSections: Record<ReversoModule, SidebarSection[]> = {
+  explorer: [
+    {
+      title: "Sources",
+      icon: FolderOpen,
+      items: ["contract-bid-01.pdf", "email-dump.eml", "photoset-briefing.zip"],
+    },
+    {
+      title: "Investigations",
+      icon: MagnifyingGlass,
+      items: ["Corporate Cluster", "Procurement Trail", "Public Works Overbilling"],
+    },
+    {
+      title: "Dossier",
+      icon: Sparkle,
+      items: ["People", "Organizations", "Timeline"],
+    },
   ],
-  ["components", ["ui", "button.tsx", "card.tsx"], "header.tsx", "footer.tsx"],
-  ["lib", ["util.ts"]],
-  ["public", "favicon.ico", "vercel.svg"],
-  ".eslintrc.json",
-  ".gitignore",
-  "next.config.js",
-  "tailwind.config.js",
-  "package.json",
-  "README.md",
-];
-
-function Logo({ className }: { className?: string }) {
-  return (
-    <img
-      src={logoUrl}
-      alt="Logo"
-      className={cn("size-5 dark:invert", className)}
-    />
-  );
+  search: [
+    {
+      title: "Saved Queries",
+      icon: MagnifyingGlass,
+      items: ["\"same CNPJ\" + contract", "\"offshore\" + board", "\"intermediary\" + agency"],
+    },
+    {
+      title: "Recent Results",
+      icon: FolderOpen,
+      items: ["email-dump.eml", "timeline/2024.md", "source-note-17.md"],
+    },
+  ],
+  graph: [
+    {
+      title: "Graph Views",
+      icon: Graph,
+      items: ["Full Graph", "People Cluster", "Companies + Contracts"],
+    },
+    {
+      title: "Highlights",
+      icon: Sparkle,
+      items: ["3 new weak ties", "2 unresolved entities", "1 temporal anomaly"],
+    },
+  ],
+  settings: [
+    {
+      title: "Workspace",
+      icon: GearSix,
+      items: ["Profile", "Appearance", "Keybindings"],
+    },
+    {
+      title: "AI",
+      icon: Sparkle,
+      items: ["Default model", "Reasoning mode", "Citation policy"],
+    },
+  ],
 }
 
-function Tree({ item }: { item: TreeItem }) {
-  const [name, ...items] = Array.isArray(item) ? item : [item];
-
-  if (!items.length) {
-    return (
-      <SidebarMenuButton className="data-[active=true]:bg-transparent">
-        <File className="size-4" />
-        {name}
-      </SidebarMenuButton>
-    );
-  }
-
-  return (
-    <SidebarMenuItem>
-      <Collapsible
-        className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
-        defaultOpen={name === "app" || name === "components"}
-      >
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton>
-            <ChevronRight className="size-4 transition-transform" />
-            <Folder className="size-4" />
-            {name}
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenuSub>
-            {items.map((subItem, index) => (
-              <Tree key={index} item={subItem} />
-            ))}
-          </SidebarMenuSub>
-        </CollapsibleContent>
-      </Collapsible>
-    </SidebarMenuItem>
-  );
-}
-
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  activeModule: string;
-  onModuleChange: (moduleId: string) => void;
-}
-
-export function AppSidebar({
+function ActivityRail({
   activeModule,
   onModuleChange,
-  ...props
-}: AppSidebarProps) {
+}: {
+  activeModule: ReversoModule
+  onModuleChange: (moduleId: ReversoModule) => void
+}) {
+  const topModules = modules.filter((module) => module.placement !== "bottom")
+  const bottomModules = modules.filter((module) => module.placement === "bottom")
+
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
-              <a href="#">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-sm bg-primary">
-                  <img
-                    src={logoUrl}
-                    alt="Logo"
-                    className="size-5 invert dark:invert-0"
-                  />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Shadcnblocks</span>
-                  <span className="truncate text-xs">my-project</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+    <aside className="flex h-full w-12 shrink-0 flex-col items-center border-r border-sidebar-border/60 bg-sidebar pt-14 pb-3">
+      <div className="flex w-full flex-col items-center gap-2">
+        {topModules.map((module) => (
+          <Tooltip key={module.id}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={module.label}
+                data-active={activeModule === module.id}
+                onClick={() => onModuleChange(module.id)}
+                className={cn(
+                  "size-10 rounded-lg border border-transparent text-sidebar-foreground/70 transition-colors",
+                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  "data-[active=true]:border-sidebar-border data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                )}
+              >
+                <module.icon className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10}>
+              {module.label}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+
+      <div className="mt-auto flex w-full flex-col items-center gap-2">
+        {bottomModules.map((module) => (
+          <Tooltip key={module.id}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={module.label}
+                data-active={activeModule === module.id}
+                onClick={() => onModuleChange(module.id)}
+                className={cn(
+                  "size-10 rounded-lg border border-transparent text-sidebar-foreground/70 transition-colors",
+                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  "data-[active=true]:border-sidebar-border data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                )}
+              >
+                <module.icon className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={10}>
+              {module.label}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </aside>
+  )
+}
+
+function WorkspaceSidebar({ activeModule }: { activeModule: ReversoModule }) {
+  const sections = moduleSections[activeModule]
+
+  return (
+    <Sidebar
+      collapsible="offcanvas"
+      className="left-12 border-r border-sidebar-border/60 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
+    >
+      <SidebarHeader className="gap-3 border-b border-sidebar-border/60 px-4 pt-14 pb-4">
+        <p className="truncate text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          {moduleMeta[activeModule].label}
+        </p>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent className="px-1.5 md:px-0">
-            <SidebarMenu>
-              {sidebarModules.map((module) => (
-                <SidebarMenuItem key={module.id}>
-                  <SidebarMenuButton
-                    tooltip={{
-                      children: module.label,
-                      hidden: false,
-                    }}
-                    onClick={() => onModuleChange(module.id)}
-                    isActive={activeModule === module.id}
-                    className="px-2.5 md:px-2"
-                  >
-                    <module.icon />
-                    <span>{module.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+
+      <SidebarContent className="gap-2 px-2 py-3">
+        {sections.map((section, index) => (
+          <Collapsible
+            key={section.title}
+            defaultOpen={index === 0}
+            className="group/collapsible rounded-md border border-transparent px-1 py-1"
+          >
+            <SidebarGroup className="gap-1 px-1 py-1">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sidebar-foreground hover:bg-sidebar-accent"
+                >
+                  <CaretRight className="size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  <section.icon className="size-4 text-muted-foreground" />
+                  <SidebarGroupLabel className="cursor-pointer p-0 text-xs uppercase tracking-[0.15em] text-muted-foreground">
+                    {section.title}
+                  </SidebarGroupLabel>
+                </button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu className="pl-7">
+                    {section.items.map((item) => (
+                      <SidebarMenuItem key={item}>
+                        <SidebarMenuButton className="h-8">
+                          <span className="truncate text-sm">{item}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        ))}
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={{
-                children: "Settings",
-                hidden: false,
-              }}
-              className="px-2.5 md:px-2"
-            >
-              <Settings />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={{
-                children: "Profile",
-                hidden: false,
-              }}
-              className="px-2.5 md:px-2"
-            >
-              <User />
-              <span>Profile</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+
+      <SidebarFooter className="border-t border-sidebar-border/60 p-3">
+        <Button
+          variant="outline"
+          className="h-9 w-full justify-between rounded-md bg-background/70"
+        >
+          <span>Open Full Graph</span>
+          <Graph className="size-4" />
+        </Button>
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }
 
-function ExplorerSidebar() {
+function ViewerSurface({ withChatOpen }: { withChatOpen: boolean }) {
   return (
-    <Sidebar
-      collapsible="none"
-      className="w-full shrink-0 border-r md:flex md:w-[280px]"
+    <section
+      className={cn(
+        "flex min-w-0 flex-1 items-center justify-center bg-muted/20",
+        withChatOpen && "border-r border-border/60"
+      )}
     >
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Changes</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {changesData.map((item, index) => (
-                <SidebarMenuItem key={index}>
-                  <SidebarMenuButton>
-                    <File className="size-4" />
-                    <span className="truncate">{item.file}</span>
-                  </SidebarMenuButton>
-                  <SidebarMenuBadge
-                    className={cn(
-                      "text-[10px] font-medium",
-                      item.state === "M" && "text-yellow-500",
-                      item.state === "U" && "text-green-500",
-                      item.state === "D" && "text-red-500",
-                    )}
-                  >
-                    {item.state}
-                  </SidebarMenuBadge>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Files</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {fileTreeData.map((item, index) => (
-                <Tree key={index} item={item} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
+      <img
+        src={logoUrl}
+        alt="Reverso"
+        className="pointer-events-none w-56 max-w-[40%] select-none opacity-10"
+      />
+    </section>
+  )
 }
 
-function SearchSidebar() {
+type ChatMode = "Ask" | "Plan" | "Agent"
+
+const chatModes: ChatMode[] = ["Ask", "Plan", "Agent"]
+
+function ChatPanel({
+  activeMode,
+  onModeChange,
+  onClose,
+}: {
+  activeMode: ChatMode
+  onModeChange: (mode: ChatMode) => void
+  onClose: () => void
+}) {
   return (
-    <Sidebar
-      collapsible="none"
-      className="w-full shrink-0 border-r md:flex md:w-[280px]"
-    >
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Search</SidebarGroupLabel>
-          <SidebarGroupContent className="px-2">
-            <div className="flex items-center rounded-md border bg-background px-3 py-2">
-              <Search className="mr-2 size-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search files..."
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              />
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
-}
+    <aside className="flex h-full w-[380px] shrink-0 flex-col bg-background">
+      <header className="flex h-12 items-center justify-between border-b border-border/60 px-4">
+        <div className="flex items-center gap-2">
+          <ChatsCircle className="size-4" />
+          <span className="text-sm font-semibold">Chat</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-border bg-muted/30 p-0.5">
+            {chatModes.map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => onModeChange(mode)}
+                className={cn(
+                  "rounded px-2 py-1 text-[11px] font-medium transition-colors",
+                  activeMode === mode
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onClose}
+            aria-label="Hide chat panel"
+          >
+            <SidebarSimple className="size-4 -scale-x-100" />
+          </Button>
+        </div>
+      </header>
 
-function GitSidebar() {
-  return (
-    <Sidebar
-      collapsible="none"
-      className="w-full shrink-0 border-r md:flex md:w-[280px]"
-    >
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Changes</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {changesData.map((item, index) => (
-                <SidebarMenuItem key={index}>
-                  <SidebarMenuButton>
-                    <File className="size-4" />
-                    <span className="truncate">{item.file}</span>
-                  </SidebarMenuButton>
-                  <SidebarMenuBadge
-                    className={cn(
-                      "text-[10px] font-medium",
-                      item.state === "M" && "text-yellow-500",
-                      item.state === "U" && "text-green-500",
-                      item.state === "D" && "text-red-500",
-                    )}
-                  >
-                    {item.state}
-                  </SidebarMenuBadge>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-  );
-}
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border/70 bg-muted/40 p-3 text-sm text-muted-foreground">
+            O historico de mensagens aparecera aqui com respostas do agente e acoes executadas.
+          </div>
+        </div>
+      </ScrollArea>
 
-type MobileDrawer = "search" | "explorer" | "git" | "chat" | null;
+      <div className="border-t border-border/60 p-4">
+        <div className="rounded-lg border border-border bg-background p-3">
+          <textarea
+            rows={4}
+            placeholder="Pergunte ao Reverso Agent..."
+            className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+      </div>
+    </aside>
+  )
+}
 
 export function ApplicationShell9() {
-  const [activeModule, setActiveModule] = React.useState("explorer");
-  const [isChatOpen, setIsChatOpen] = React.useState(false);
-  const [mobileDrawer, setMobileDrawer] = React.useState<MobileDrawer>(null);
-
-  const handleModuleChange = (moduleId: string) => {
-    setActiveModule(moduleId);
-  };
-
-  const renderSidebar = () => {
-    switch (activeModule) {
-      case "search":
-        return <SearchSidebar />;
-      case "explorer":
-        return <ExplorerSidebar />;
-      case "git":
-        return <GitSidebar />;
-      default:
-        return <ExplorerSidebar />;
-    }
-  };
+  const [activeModule, setActiveModule] = React.useState<ReversoModule>("explorer")
+  const [isChatOpen, setIsChatOpen] = React.useState(true)
+  const [chatMode, setChatMode] = React.useState<ChatMode>("Ask")
 
   return (
     <SidebarProvider
       className="h-svh overflow-hidden"
-      style={
-        {
-          "--sidebar-width": "var(--sidebar-width-icon)",
-        } as React.CSSProperties
-      }
+      style={{ "--sidebar-width": "16.25rem" } as React.CSSProperties}
     >
-      <AppSidebar
-        activeModule={activeModule}
-        onModuleChange={handleModuleChange}
-        className="hidden md:flex"
-      />
+      <div className="hidden h-full w-full overflow-hidden md:flex">
+        <ActivityRail activeModule={activeModule} onModuleChange={setActiveModule} />
+        <WorkspaceSidebar activeModule={activeModule} />
 
-      <div className="flex h-full w-full flex-col md:hidden">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b bg-background px-3">
-          <div className="flex items-center gap-2">
-            <div className="flex aspect-square size-7 items-center justify-center rounded-sm bg-primary">
-              <img
-                src={logoUrl}
-                alt="Logo"
-                className="size-4 invert dark:invert-0"
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="drag-region flex h-12 items-center justify-between border-b border-border/60 px-4">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger
+                variant="ghost"
+                size="icon-sm"
+                className="no-drag text-muted-foreground hover:text-foreground"
               />
+              <nav className="flex items-center gap-1 text-sm">
+                <span className="font-medium">Reverso Agent</span>
+                <CaretRight className="size-4 text-muted-foreground" />
+                <span className="text-muted-foreground">{moduleMeta[activeModule].label}</span>
+              </nav>
             </div>
-            <span className="text-sm font-medium">my-project</span>
+
+            <div className="no-drag flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={() => setIsChatOpen((current) => !current)}
+              >
+                <SidebarSimple className={cn("size-4", !isChatOpen && "-scale-x-100")} />
+                <span>{isChatOpen ? "Hide Chat" : "Show Chat"}</span>
+              </Button>
+            </div>
+          </header>
+
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <ViewerSurface withChatOpen={isChatOpen} />
+            {isChatOpen ? (
+              <ChatPanel
+                activeMode={chatMode}
+                onModeChange={setChatMode}
+                onClose={() => setIsChatOpen(false)}
+              />
+            ) : null}
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="size-8">
-              <Plus className="size-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="size-8">
-              <Settings className="size-4" />
-            </Button>
-          </div>
-        </header>
-
-        <div className="flex flex-1 items-center justify-center bg-[#f3f3f3]">
-          <Logo className="size-24 opacity-30" />
         </div>
-
-        <div className="flex h-14 shrink-0 items-center justify-around border-t bg-background">
-          <button
-            type="button"
-            onClick={() => setMobileDrawer("search")}
-            className={cn(
-              "flex items-center justify-center rounded-md p-2",
-              mobileDrawer === "search"
-                ? "text-foreground"
-                : "text-muted-foreground",
-            )}
-          >
-            <Search className="size-5" />
-            <span className="sr-only">Search</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileDrawer("explorer")}
-            className={cn(
-              "flex items-center justify-center rounded-md p-2",
-              mobileDrawer === "explorer"
-                ? "text-foreground"
-                : "text-muted-foreground",
-            )}
-          >
-            <File className="size-5" />
-            <span className="sr-only">Explorer</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileDrawer("git")}
-            className={cn(
-              "flex items-center justify-center rounded-md p-2",
-              mobileDrawer === "git"
-                ? "text-foreground"
-                : "text-muted-foreground",
-            )}
-          >
-            <GitBranch className="size-5" />
-            <span className="sr-only">Source Control</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileDrawer("chat")}
-            className={cn(
-              "flex items-center justify-center rounded-md p-2",
-              mobileDrawer === "chat"
-                ? "text-foreground"
-                : "text-muted-foreground",
-            )}
-          >
-            <MessageSquare className="size-5" />
-            <span className="sr-only">Chat</span>
-          </button>
-        </div>
-
-        <Drawer
-          open={mobileDrawer === "search"}
-          onOpenChange={(open) => setMobileDrawer(open ? "search" : null)}
-        >
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Search</DrawerTitle>
-            </DrawerHeader>
-            <div className="p-4">
-              <div className="flex items-center rounded-md border bg-background px-3 py-2">
-                <Search className="mr-2 size-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search files..."
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        <Drawer
-          open={mobileDrawer === "explorer"}
-          onOpenChange={(open) => setMobileDrawer(open ? "explorer" : null)}
-        >
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader>
-              <DrawerTitle>Files</DrawerTitle>
-            </DrawerHeader>
-            <ScrollArea className="h-[60vh] [&>[data-slot=scroll-area-viewport]>div]:!block">
-              <SidebarContent>
-                <SidebarGroup>
-                  <SidebarGroupLabel>Changes</SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {changesData.map((item, index) => (
-                        <SidebarMenuItem key={index}>
-                          <SidebarMenuButton>
-                            <File className="size-4" />
-                            <span className="truncate">{item.file}</span>
-                          </SidebarMenuButton>
-                          <SidebarMenuBadge
-                            className={cn(
-                              "text-[10px] font-medium",
-                              item.state === "M" && "text-yellow-500",
-                              item.state === "U" && "text-green-500",
-                              item.state === "D" && "text-red-500",
-                            )}
-                          >
-                            {item.state}
-                          </SidebarMenuBadge>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-                <SidebarGroup>
-                  <SidebarGroupLabel>Files</SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {fileTreeData.map((item, index) => (
-                        <Tree key={index} item={item} />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </SidebarContent>
-            </ScrollArea>
-          </DrawerContent>
-        </Drawer>
-
-        <Drawer
-          open={mobileDrawer === "git"}
-          onOpenChange={(open) => setMobileDrawer(open ? "git" : null)}
-        >
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader>
-              <DrawerTitle>Source Control</DrawerTitle>
-            </DrawerHeader>
-            <ScrollArea className="h-[60vh] [&>[data-slot=scroll-area-viewport]>div]:!block">
-              <SidebarContent>
-                <SidebarGroup>
-                  <SidebarGroupLabel>Changes</SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {changesData.map((item, index) => (
-                        <SidebarMenuItem key={index}>
-                          <SidebarMenuButton>
-                            <File className="size-4" />
-                            <span className="truncate">{item.file}</span>
-                          </SidebarMenuButton>
-                          <SidebarMenuBadge
-                            className={cn(
-                              "text-[10px] font-medium",
-                              item.state === "M" && "text-yellow-500",
-                              item.state === "U" && "text-green-500",
-                              item.state === "D" && "text-red-500",
-                            )}
-                          >
-                            {item.state}
-                          </SidebarMenuBadge>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </SidebarContent>
-            </ScrollArea>
-          </DrawerContent>
-        </Drawer>
-
-        <Drawer
-          open={mobileDrawer === "chat"}
-          onOpenChange={(open) => setMobileDrawer(open ? "chat" : null)}
-        >
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader>
-              <DrawerTitle>Chat</DrawerTitle>
-            </DrawerHeader>
-            <div className="flex h-[60vh] flex-col">
-              <ScrollArea className="flex-1 p-4">
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm text-primary-foreground">
-                    Build me a landing page for shadcnblocks with a hero
-                    section, features grid, and pricing table
-                  </div>
-                </div>
-              </ScrollArea>
-              <div className="border-t p-3">
-                <div className="rounded-lg border bg-background">
-                  <textarea
-                    placeholder="Describe what you want to build..."
-                    rows={3}
-                    className="w-full resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
-                  />
-                  <div className="flex items-center justify-between border-t px-3 py-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>Press Enter to send</span>
-                    </div>
-                    <Button size="sm" className="h-7 gap-1.5 px-3">
-                      <span>Send</span>
-                      <ChevronRight className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
       </div>
 
-      <div className="hidden min-w-0 flex-1 flex-col overflow-hidden md:flex">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b bg-background px-4">
-          <nav className="flex items-center gap-1 text-sm">
-            <span className="font-medium">Shadcnblocks</span>
-            <ChevronRight className="size-4 text-muted-foreground" />
-            <span className="text-muted-foreground">my-project</span>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5">
-              <Play className="size-4" />
-              <span>Preview</span>
-            </Button>
-            <Button variant="ghost" size="icon" className="size-8">
-              <Plus className="size-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="size-8">
-              <History className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("size-8", isChatOpen && "bg-muted")}
-              onClick={() => setIsChatOpen(!isChatOpen)}
-            >
-              <PanelRight className="size-4" />
-            </Button>
-          </div>
-        </header>
-
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          {renderSidebar()}
-
-          <SidebarInset className="min-h-0 flex-col overflow-hidden">
-            <div className="flex flex-1 overflow-hidden">
-              <div
-                className={cn(
-                  "flex flex-1 items-center justify-center bg-[#f3f3f3]",
-                )}
-              >
-                {!isChatOpen ? (
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    <Logo className="size-24 opacity-30" />
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-medium">Start building</h3>
-                      <p className="max-w-sm text-sm text-muted-foreground">
-                        Describe what you want to create and let AI help you
-                        build it
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => setIsChatOpen(true)}
-                      className="gap-2"
-                    >
-                      <MessageSquare className="size-4" />
-                      Open Chat
-                    </Button>
-                  </div>
-                ) : (
-                  <Logo className="size-24 opacity-30" />
-                )}
-              </div>
-
-              {isChatOpen && (
-                <div className="flex w-[400px] shrink-0 flex-col border-l">
-                  <div className="flex h-10 items-center justify-between border-b px-4">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="size-4" />
-                      <span className="text-sm font-medium">Chat</span>
-                    </div>
-                  </div>
-                  <ScrollArea className="flex-1 p-4">
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm text-primary-foreground">
-                        Build me a landing page for shadcnblocks with a hero
-                        section, features grid, and pricing table
-                      </div>
-                    </div>
-                  </ScrollArea>
-
-                  <div className="border-t p-3">
-                    <div className="rounded-lg border bg-background">
-                      <textarea
-                        placeholder="Describe what you want to build..."
-                        rows={3}
-                        className="w-full resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
-                      />
-                      <div className="flex items-center justify-between border-t px-3 py-2">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>Press Enter to send</span>
-                        </div>
-                        <Button size="sm" className="h-7 gap-1.5 px-3">
-                          <span>Send</span>
-                          <ChevronRight className="size-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </SidebarInset>
-        </div>
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center md:hidden">
+        <img src={logoUrl} alt="Reverso" className="size-12 opacity-70" />
+        <h2 className="text-lg font-semibold">Application Shell 9 adaptada</h2>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          A versao desktop (md+) contem o layout completo com Activity Bar, Sidebar, Viewer e Chat.
+        </p>
       </div>
     </SidebarProvider>
-  );
+  )
 }

@@ -1,8 +1,8 @@
-import { ApplicationShell9 } from '@/components/application-shell9'
+import { AppLayout } from '@/components/app/AppLayout'
 import type { JSX } from 'react'
 
 function App(): JSX.Element {
-  return <ApplicationShell9 />
+  return <AppLayout />
 }
 
 export default App

@@ -93,6 +93,7 @@ export async function buildPreviewAndMetadata(params: {
   model: string
   replicaMarkdown: string
   openRouterClient: OpenRouterClient
+  artifactLanguageInstruction: string
   provider?: { sort: 'latency' | 'throughput' | 'price' }
 }): Promise<PreviewMetadataResult> {
   const len = params.replicaMarkdown.length
@@ -120,7 +121,13 @@ export async function buildPreviewAndMetadata(params: {
       timeoutMs: PREVIEW_METADATA_TIMEOUT_MS,
       messages: [
         { role: 'system', content: PREVIEW_SYSTEM_PROMPT },
-        { role: 'user', content: buildPreviewUserPrompt(condensed.condensedInput) }
+        {
+          role: 'user',
+          content: buildPreviewUserPrompt(
+            condensed.condensedInput,
+            params.artifactLanguageInstruction
+          )
+        }
       ],
       ...(params.provider?.sort ? { provider: { sort: params.provider.sort } } : {})
     },
@@ -136,7 +143,13 @@ export async function buildPreviewAndMetadata(params: {
       timeoutMs: PREVIEW_METADATA_TIMEOUT_MS,
       messages: [
         { role: 'system', content: METADATA_SYSTEM_PROMPT },
-        { role: 'user', content: buildMetadataUserPrompt(previewContent) }
+        {
+          role: 'user',
+          content: buildMetadataUserPrompt(
+            previewContent,
+            params.artifactLanguageInstruction
+          )
+        }
       ],
       ...(params.provider?.sort ? { provider: { sort: params.provider.sort } } : {})
     },

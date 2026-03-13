@@ -1,0 +1,132 @@
+description: Dialeto Markdown atual do Agent Lab (artefatos em lab/agent/filesystem)
+globs: "lab/agent/filesystem/**/*.md,lab/agent/src/**/*markdown*,lab/agent/src/tools/**/*.ts,lab/agent/src/runner/**/*.ts"
+alwaysApply: false
+---
+
+# Reverso Markdown
+
+## Escopo atual (fonte da verdade)
+
+- Esta regra descreve o Markdown **gerado pelo agente** em `lab/agent/filesystem/`.
+- Priorizar consistência de artefatos investigativos (lead/allegation/finding/dossier/timeline/source artifacts).
+- Prompts base podem estar em inglês; idioma do artefato segue política de `artifactLanguage` / idioma da source.
+
+## Convenções gerais de escrita
+
+- Usar **frontmatter YAML** no topo, delimitado por `---`.
+- Usar títulos e seções em Markdown simples (`#`, `##`, listas, tabela quando necessário).
+- Usar **wikilinks** `[[...]]` para relacionamentos internos (ex.: entities, allegations, findings, actors).
+- Evitar HTML custom e sintaxes experimentais fora das diretivas já suportadas.
+- Sempre preservar rastreabilidade de evidências (source, trecho, localização, confiança) quando aplicável.
+
+## Tipos de artefato em `filesystem`
+
+### 1) Configuração de contexto do agente
+
+- Arquivo: `agent.md`
+- Frontmatter típico:
+  - `type: agent_config`
+  - `updated`
+  - `previews_used`
+  - `estimated_tokens`
+- Corpo inclui entendimento inicial + seção de previews usados.
+
+### 2) Investigação (lead/allegation/finding)
+
+- Lead: `investigation/leads/lead-<slug>.md`
+  - Frontmatter típico:
+    - `type: lead`
+    - `slug`
+    - `title`
+    - `status: draft | planned`
+    - `created_at` / `updated_at`
+    - `allegations_count`
+    - `findings_count`
+  - Corpo típico:
+    - `# Context` ou `# Contexto`
+    - `## Inquiry Plan` (quando existir)
+    - `## Allegations Index` / `## Índice de Allegations`
+    - `## Findings Index` / `## Índice de Findings`
+    - `# Conclusion` / `# Conclusão` (após inquiry)
+
+- Allegation: `investigation/allegations/allegation-*.md`
+  - Frontmatter típico:
+    - `type: allegation`
+    - `id`
+    - `lead_slug`
+    - `statement`
+    - `finding_ids`
+    - `status_summary`
+  - Corpo com statement no `#` e seção de findings vinculados (`[[finding-*]]`).
+
+- Finding: `investigation/findings/finding-*.md`
+  - Frontmatter típico:
+    - `type: finding`
+    - `id`
+    - `lead_slug`
+    - `claim`
+    - `status: verified | unverified | rejected`
+    - `allegation_ids`
+    - `evidence` (lista textual de evidências)
+  - Corpo inclui:
+    - status textual
+    - seção `Evidence/Evidências` com `verification_status`, `source_id`, localização e confiança
+    - seção de allegations relacionadas (`[[allegation-*]]`)
+
+### 3) Fila de revisão de evidências
+
+- Arquivo opcional: `investigation/leads/lead-<slug>.evidence-review.md`
+- Frontmatter:
+  - `type: evidence_review_queue`
+  - `lead_slug`
+  - `pending_findings`
+  - `created_at`
+- Corpo lista findings pendentes (weak/missing) com evidências e confiança.
+
+### 4) Dossier (entities)
+
+- Pessoas: `dossier/people/*.md` (`type: person`)
+- Grupos: `dossier/groups/*.md` (`type: group`)
+- Locais: `dossier/places/<country>/<city>/*.md` (`type: place`)
+- Estrutura comum:
+  - Frontmatter com identidade + tags + timestamps
+  - `## Resumo`
+  - seção contextual/tabela por documento e páginas
+  - placeholders de conexões/anotações
+- Wikilinks em membros/entidades relacionadas são encorajados.
+
+### 5) Timeline
+
+- Arquivo mensal: `dossier/timeline/YYYY/YYYY-MM.md`
+- Frontmatter:
+  - `type: timeline`
+  - `year`
+  - `month`
+  - `events_count`
+  - `tags`
+- Eventos usam diretiva:
+  - `:::event`
+  - campos (`date`, `actors`, `type`, `source`, opcional `follows`)
+  - `---` + descrição
+  - `:::`
+
+### 6) Source artifacts
+
+- Em `source/.artifacts/<docId>/`:
+  - `preview.md` (resumo editorial estruturado)
+  - `index.md` (guia página a página)
+  - `metadata.md` (frontmatter + evidências de classificação + entidades + gaps)
+  - `replica.md` (modo deep; transcrição completa OCR em Markdown)
+
+## Diretivas e sintaxes suportadas hoje
+
+- `:::event` é diretiva **ativa** na timeline.
+- `:::annotation` e `:::clue` aparecem como alvo de evolução/placeholder em alguns textos, mas não são núcleo obrigatório do fluxo atual.
+- `[[wikilink]]` é sintaxe central para relacionamentos entre artefatos.
+
+## Regras práticas para o agente
+
+- Ao editar artefatos existentes, manter nomes de seções e chaves de frontmatter já usadas pelo pipeline.
+- Não remover campos de rastreabilidade em findings/evidências.
+- Não trocar o formato de IDs (`lead-*`, `allegation-*`, `finding-*`) sem migração explícita.
+- Para novos artefatos investigativos, preferir Markdown simples e auditável em vez de blocos ricos específicos de UI.

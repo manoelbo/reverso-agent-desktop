@@ -11,6 +11,7 @@ import type { OpenRouterUsage } from '../../types.js'
 export interface StepNotesParams {
   ctx: CacheContext
   sourceFileName: string
+  artifactLanguageInstruction?: string
   client: OpenRouterClient
   timeoutMs?: number
 }
@@ -42,7 +43,7 @@ export async function runStepNotes(params: StepNotesParams): Promise<StepNotesRe
     params.ctx,
     params.client,
     STANDARD_NOTES_SYSTEM_PROMPT,
-    STANDARD_NOTES_USER_PROMPT,
+    [STANDARD_NOTES_USER_PROMPT, params.artifactLanguageInstruction].filter(Boolean).join("\n\n"),
     params.timeoutMs ?? 120_000,
     8192
   )
