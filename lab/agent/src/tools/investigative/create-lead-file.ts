@@ -6,6 +6,10 @@ import type {
   InquiryScenario,
   VerificationStatus
 } from '../../core/contracts.js'
+import {
+  createDefaultEditorialGovernance,
+  type EditorialGovernanceMetadata
+} from '../../core/editorial-governance.js'
 import { ensureDir, slugify, writeUtf8 } from '../../core/fs-io.js'
 import { formatFrontmatter } from '../../core/markdown.js'
 import type { ToolContext } from './context.js'
@@ -46,6 +50,7 @@ export interface AppendLeadConclusionInput {
   conclusion: string
   language?: string
   audit?: InquiryAuditMetadata
+  governance?: Partial<EditorialGovernanceMetadata>
 }
 
 export interface PersistInquiryArtifactsInput {
@@ -55,6 +60,7 @@ export interface PersistInquiryArtifactsInput {
   reviewQueue?: LeadFindingInput[]
   language?: string
   audit?: InquiryAuditMetadata
+  governance?: Partial<EditorialGovernanceMetadata>
 }
 
 export interface InquiryAuditMetadata {
@@ -213,6 +219,19 @@ function formatEvidenceLocation(evidence: FindingEvidence): string {
   return location.hint ? `unknown (${location.hint})` : 'unknown'
 }
 
+function governanceFrontmatter(
+  governance?: Partial<EditorialGovernanceMetadata>
+): Record<string, string> {
+  const normalized = createDefaultEditorialGovernance(governance)
+  return {
+    editorial_status: normalized.editorial_status,
+    approver: normalized.approver,
+    approved_at: normalized.approved_at,
+    publication_criteria: normalized.publication_criteria.join(' | '),
+    legal_notes: normalized.legal_notes
+  }
+}
+
 export async function createLeadFile(
   input: CreateLeadFileInput,
   ctx: ToolContext
@@ -247,7 +266,8 @@ export async function createLeadFile(
       status,
       created_at: new Date().toISOString(),
       allegations_count: normalizedAllegations.length,
-      findings_count: normalizedFindings.length
+      findings_count: normalizedFindings.length,
+      ...governanceFrontmatter()
     }),
     '',
     `# ${labels.contextTitle}`,
@@ -367,7 +387,8 @@ export async function persistInquiryArtifacts(
         status_summary: statusSummary(normalizedFindings, allegation.id),
         critical_write_gate: input.audit?.criticalWriteGate ?? 'approved',
         needs_repair: input.audit?.needsRepair ?? false,
-        repair_reasons: (input.audit?.repairReasons ?? []).join(' | ')
+        repair_reasons: (input.audit?.repairReasons ?? []).join(' | '),
+        ...governanceFrontmatter(input.governance)
       }),
       '',
       `# ${allegation.statement}`,
@@ -397,6 +418,7 @@ export async function persistInquiryArtifacts(
         critical_write_gate: input.audit?.criticalWriteGate ?? 'approved',
         needs_repair: input.audit?.needsRepair ?? false,
         repair_reasons: (input.audit?.repairReasons ?? []).join(' | '),
+        ...governanceFrontmatter(input.governance),
         evidence: finding.evidence.map((item) => {
           return `${item.source_id} [${item.verification_status}] (${formatEvidenceLocation(item)}): ${item.excerpt}`
         })
@@ -442,7 +464,8 @@ export async function persistInquiryArtifacts(
         created_at: new Date().toISOString(),
         critical_write_gate: input.audit?.criticalWriteGate ?? 'approved',
         needs_repair: input.audit?.needsRepair ?? false,
-        repair_reasons: (input.audit?.repairReasons ?? []).join(' | ')
+        repair_reasons: (input.audit?.repairReasons ?? []).join(' | '),
+        ...governanceFrontmatter(input.governance)
       }),
       '',
       `# ${labels.evidenceReviewQueueTitle}`,
@@ -475,6 +498,7 @@ export async function appendLeadConclusion(
         ? labels.scenarioNegative
         : labels.scenarioPlanAnother
   const marker = `# ${labels.conclusionTitle}`
+  const governance = createDefaultEditorialGovernance(input.governance)
   const auditLines = input.audit
     ? [
         '',
@@ -484,6 +508,15 @@ export async function appendLeadConclusion(
         `- repair_reasons: ${(input.audit.repairReasons ?? []).join(' | ') || 'none'}`
       ]
     : []
+  const governanceLines = [
+    '',
+    '## Editorial Governance',
+    `- editorial_status: ${governance.editorial_status}`,
+    `- approver: ${governance.approver || 'n/a'}`,
+    `- approved_at: ${governance.approved_at || 'n/a'}`,
+    `- publication_criteria: ${governance.publication_criteria.join(' | ') || 'n/a'}`,
+    `- legal_notes: ${governance.legal_notes || 'n/a'}`
+  ]
   const block = [
     marker,
     '',
@@ -491,13 +524,14 @@ export async function appendLeadConclusion(
     '',
     input.conclusion.trim(),
     ...auditLines,
+    ...governanceLines,
     ''
   ].join('\n')
   const markerRegex = new RegExp(`${marker.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[\\s\\S]*$`, 'm')
   const updated = current.includes(marker)
     ? current.replace(
         markerRegex,
-        `${marker}\n\nScenario: ${scenarioLabel}\n\n${input.conclusion.trim()}${auditLines.join('\n')}\n`
+        `${marker}\n\nScenario: ${scenarioLabel}\n\n${input.conclusion.trim()}${auditLines.join('\n')}${governanceLines.join('\n')}\n`
       )
     : `${current.trimEnd()}\n\n${block}\n`
   await writeUtf8(leadPath, updated)

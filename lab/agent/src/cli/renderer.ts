@@ -3,8 +3,17 @@ import path from 'node:path'
 import { ensureDir } from '../core/fs-io.js'
 import type { AgentEventEnvelope, AgentEventSink, AgentStepStatus } from './events.js'
 import { AgentEventBus } from './events.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { CliUiFeedback } from '../feedback/cli-ui-feedback.js'
 
 export type FeedbackMode = 'plain' | 'compact' | 'visual'
+
+export type { UiFeedbackController }
+
+/**
+ * @deprecated Use `UiFeedbackController` directly. This alias exists for backward compatibility.
+ */
+export type FeedbackController = UiFeedbackController
 
 export interface RendererAdapter extends AgentEventSink {}
 
@@ -151,52 +160,6 @@ class JsonlEventLogSink implements AgentEventSink {
   }
 }
 
-export interface FeedbackController {
-  mode: FeedbackMode
-  logPath: string
-  step(label: string, status?: AgentStepStatus, details?: string): void
-  info(message: string): void
-  warn(message: string): void
-  error(message: string): void
-  assistantDelta(text: string): void
-  toolCall(input: { tool: string; inputSummary?: string }): void
-  toolResult(input: {
-    tool: string
-    status: 'success' | 'error'
-    outputSummary?: string
-    durationMs?: number
-    retryCount?: number
-    errorCode?: 'input_validation' | 'runtime_exception' | 'permission_denied' | 'unknown'
-  }): void
-  fileChange(input: {
-    path: string
-    changeType: 'new' | 'edited' | 'deleted'
-    addedLines?: number
-    removedLines?: number
-    preview?: string
-  }): void
-  finalSummary(title: string, lines: string[]): void
-  loopBudgetUpdated(input: {
-    step: number
-    usage: {
-      steps: number
-      toolCalls: number
-      elapsedMs: number
-      estimatedTokens: number
-    }
-    budget: { maxSteps: number; maxToolCalls: number; maxElapsedMs: number; maxTokens?: number }
-  }): void
-  loopVerificationResult(input: {
-    step: number
-    ok: boolean
-    confidence: number
-    reason: string
-    gaps: string[]
-  }): void
-  loopStopped(input: { step: number; failures: number; stopReason: string }): void
-  flush(): Promise<void>
-}
-
 interface CreateFeedbackControllerInput {
   mode?: FeedbackMode
   eventsDir: string
@@ -205,7 +168,7 @@ interface CreateFeedbackControllerInput {
 
 export async function createFeedbackController(
   input: CreateFeedbackControllerInput
-): Promise<FeedbackController> {
+): Promise<UiFeedbackController> {
   const mode = input.mode ?? 'visual'
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
   const logPath = path.join(input.eventsDir, `${input.sessionName}-${timestamp}.jsonl`)
@@ -216,49 +179,7 @@ export async function createFeedbackController(
   if (mode === 'plain') sinks.unshift(new CompactRenderer())
 
   const bus = new AgentEventBus(sinks)
-  return {
-    mode,
-    logPath,
-    step(label, status = 'in_progress', details) {
-      bus.emit({ type: 'agent_step', label, status, ...(details ? { details } : {}) })
-    },
-    info(message) {
-      bus.emit({ type: 'system_event', level: 'info', message })
-    },
-    warn(message) {
-      bus.emit({ type: 'system_event', level: 'warning', message })
-    },
-    error(message) {
-      bus.emit({ type: 'system_event', level: 'error', message })
-    },
-    assistantDelta(text) {
-      bus.emit({ type: 'assistant_text_delta', text })
-    },
-    toolCall(input) {
-      bus.emit({ type: 'tool_call', ...input })
-    },
-    toolResult(input) {
-      bus.emit({ type: 'tool_result', ...input })
-    },
-    fileChange(change) {
-      bus.emit({ type: 'file_change', ...change })
-    },
-    finalSummary(title, lines) {
-      bus.emit({ type: 'final_summary', title, lines })
-    },
-    loopBudgetUpdated(input) {
-      bus.emit({ type: 'loop_budget_updated', ...input })
-    },
-    loopVerificationResult(input) {
-      bus.emit({ type: 'loop_verification_result', ...input })
-    },
-    loopStopped(input) {
-      bus.emit({ type: 'loop_stopped', ...input })
-    },
-    async flush() {
-      await bus.flush()
-    }
-  }
+  return new CliUiFeedback(bus, logPath)
 }
 
 function statusIcon(status: AgentStepStatus): string {

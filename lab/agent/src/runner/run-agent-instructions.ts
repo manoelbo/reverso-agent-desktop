@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises'
 import { resolveRuntimeConfig } from '../config/env.js'
 import { writeUtf8 } from '../core/fs-io.js'
 import { toRelative } from '../core/paths.js'
-import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { createFeedbackController, type FeedbackMode } from '../cli/renderer.js'
 
 const SECTION_HISTORY = '## Historico de instrucoes'
 const SECTION_ACTIVE = '## Instrucoes ativas'
@@ -11,7 +12,7 @@ const SECTION_ACTIVE = '## Instrucoes ativas'
 export interface RunAgentSetupOptions {
   text: string
   feedbackMode?: FeedbackMode
-  feedback?: FeedbackController
+  feedback?: UiFeedbackController
 }
 
 function ensureNewline(s: string): string {
@@ -33,7 +34,7 @@ export async function runAgentSetup(options: RunAgentSetupOptions): Promise<void
       sessionName: 'agent-setup',
       ...(options.feedbackMode ? { mode: options.feedbackMode } : {})
     }))
-  feedback.step('Atualizando instrucoes em filesystem/agent.md', 'in_progress')
+  feedback.stepStart('update-instructions', 'Atualizando instrucoes em filesystem/agent.md')
   const agentPath = path.join(runtime.paths.outputDir, 'agent.md')
 
   let content: string
@@ -77,16 +78,9 @@ export async function runAgentSetup(options: RunAgentSetupOptions): Promise<void
 
   await writeUtf8(agentPath, content)
   const relPath = toRelative(runtime.paths.projectRoot, agentPath)
-  feedback.fileChange({
-    path: relPath,
-    changeType: 'edited',
-    addedLines: 2,
-    removedLines: 0,
-    preview: instruction
-  })
-  feedback.step('Instrucao adicionada', 'completed', relPath)
-  feedback.info(`Log de eventos salvo em ${toRelative(runtime.paths.projectRoot, feedback.logPath)}`)
-  feedback.finalSummary('Atualizacao concluida', [
+  feedback.fileEdited(relPath, 2, 0)
+  feedback.stepComplete('update-instructions', relPath)
+  feedback.summary('Atualizacao concluida', [
     'Historico de instrucoes atualizado.',
     'Instrucoes ativas atualizadas para os proximos ciclos.'
   ])

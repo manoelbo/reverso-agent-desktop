@@ -5,6 +5,7 @@ export type StopReason =
   | 'max_steps_reached'
   | 'low_confidence'
   | 'tool_error'
+  | 'compliance_denied'
   | 'timeout'
   | 'no_progress'
 

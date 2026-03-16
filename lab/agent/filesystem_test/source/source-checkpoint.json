@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "sourceDir": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source",
+  "updatedAt": "2026-03-14T23:00:11.857Z",
+  "files": [
+    {
+      "docId": "2021-rua-ilha-dos-papagaios-dec1132f",
+      "originalFileName": "2021_Rua_Ilha_dos_Papagaios.pdf",
+      "sourcePath": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/2021_Rua_Ilha_dos_Papagaios.pdf",
+      "fileType": "pdf",
+      "artifactDir": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/.artifacts/2021-rua-ilha-dos-papagaios-dec1132f",
+      "selected": false,
+      "status": "not_processed",
+      "createdAt": "2026-03-14T23:00:11.856Z",
+      "updatedAt": "2026-03-14T23:00:11.856Z"
+    },
+    {
+      "docId": "2022-085-1-0be203c1",
+      "originalFileName": "2022_085 (1).pdf",
+      "sourcePath": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/2022_085 (1).pdf",
+      "fileType": "pdf",
+      "artifactDir": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/.artifacts/2022-085-1-0be203c1",
+      "selected": false,
+      "status": "not_processed",
+      "createdAt": "2026-03-14T23:00:11.856Z",
+      "updatedAt": "2026-03-14T23:00:11.856Z"
+    },
+    {
+      "docId": "2022-085-ae673fa2",
+      "originalFileName": "2022_085.pdf",
+      "sourcePath": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/2022_085.pdf",
+      "fileType": "pdf",
+      "artifactDir": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/.artifacts/2022-085-ae673fa2",
+      "selected": false,
+      "status": "not_processed",
+      "createdAt": "2026-03-14T23:00:11.856Z",
+      "updatedAt": "2026-03-14T23:00:11.856Z"
+    },
+    {
+      "docId": "2022-talude-parque-edu-chaves-fa3577ee",
+      "originalFileName": "2022_talude_parque_edu_chaves.pdf",
+      "sourcePath": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/2022_talude_parque_edu_chaves.pdf",
+      "fileType": "pdf",
+      "artifactDir": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/.artifacts/2022-talude-parque-edu-chaves-fa3577ee",
+      "selected": false,
+      "status": "not_processed",
+      "createdAt": "2026-03-14T23:00:11.856Z",
+      "updatedAt": "2026-03-14T23:00:11.856Z"
+    },
+    {
+      "docId": "2023-avaliaci-ai-o-estrutural-avenida-gen-milton-f337758a",
+      "originalFileName": "2023_AVALIACÌ§AÌO ESTRUTURAL_AVENIDA GEN MILTON.pdf",
+      "sourcePath": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/2023_AVALIACÌ§AÌO ESTRUTURAL_AVENIDA GEN MILTON.pdf",
+      "fileType": "pdf",
+      "artifactDir": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/.artifacts/2023-avaliaci-ai-o-estrutural-avenida-gen-milton-f337758a",
+      "selected": false,
+      "status": "not_processed",
+      "createdAt": "2026-03-14T23:00:11.856Z",
+      "updatedAt": "2026-03-14T23:00:11.856Z"
+    },
+    {
+      "docId": "2023-ponte-das-bandeiras-2f8b5385",
+      "originalFileName": "2023_PONTE DAS BANDEIRAS.pdf",
+      "sourcePath": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/2023_PONTE DAS BANDEIRAS.pdf",
+      "fileType": "pdf",
+      "artifactDir": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/.artifacts/2023-ponte-das-bandeiras-2f8b5385",
+      "selected": false,
+      "status": "not_processed",
+      "createdAt": "2026-03-14T23:00:11.856Z",
+      "updatedAt": "2026-03-14T23:00:11.856Z"
+    }
+  ]
+}

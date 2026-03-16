@@ -33,3 +33,14 @@ test('P0: no_progress gera recomendacao operacional explicita', () => {
   assert.match(recommendation.toLowerCase(), /no-progress/)
   assert.match(recommendation.toLowerCase(), /deep-dive complementar/)
 })
+
+test('P0: write gate continua aprovando quando gate esta desligado', () => {
+  const decision = resolveCriticalWriteGateDecision({
+    gateEnabled: false,
+    requireExplicitWriteApproval: true,
+    hasPersistActionPlanned: false
+  })
+  assert.equal(decision.approved, true)
+  assert.equal(decision.mode, 'bypassed')
+  assert.match(decision.reason, /critical_write_gate_disabled/)
+})

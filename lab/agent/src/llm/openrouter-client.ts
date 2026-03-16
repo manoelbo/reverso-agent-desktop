@@ -8,9 +8,20 @@ interface ChatRequest {
   timeoutMs?: number
 }
 
+export interface TokenUsage {
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  cachedInputTokens?: number
+}
+
 export interface ChatStreamRequest extends ChatRequest {
   /** Called for each streamed delta; return value is ignored. */
   onChunk?: (delta: string) => void
+  /** Called once at the end of the stream with real token counts from the API. */
+  onUsage?: (usage: TokenUsage) => void
+  /** Prior conversation turns to include between system and user messages. */
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>
 }
 
 interface OpenRouterChoice {
@@ -49,6 +60,7 @@ export class OpenRouterClient {
    */
   async chatTextStream(request: ChatStreamRequest): Promise<string> {
     const onChunk = request.onChunk
+    const onUsage = request.onUsage
     let lastError: Error | undefined
     const timeoutMs = request.timeoutMs ?? 120_000
 
@@ -68,10 +80,12 @@ export class OpenRouterClient {
             model: request.model,
             temperature: request.temperature ?? 0.2,
             stream: true,
+            stream_options: { include_usage: true },
             messages: [
               { role: 'system', content: request.system },
-              { role: 'user', content: request.user }
-            ]
+              ...(request.history ?? []),
+              { role: 'user', content: request.user },
+            ],
           }),
           signal: controller.signal
         })
@@ -106,6 +120,12 @@ export class OpenRouterClient {
               const parsed = JSON.parse(data) as {
                 error?: { message?: string }
                 choices?: Array<{ delta?: { content?: string }; finish_reason?: string }>
+                usage?: {
+                  prompt_tokens?: number
+                  completion_tokens?: number
+                  total_tokens?: number
+                  prompt_tokens_details?: { cached_tokens?: number }
+                }
               }
               if (parsed.error) {
                 throw new Error(parsed.error.message ?? 'Stream error')
@@ -114,6 +134,17 @@ export class OpenRouterClient {
               if (typeof content === 'string') {
                 fullContent += content
                 onChunk?.(content)
+              }
+              if (parsed.usage && onUsage) {
+                const inputTokens = parsed.usage.prompt_tokens ?? 0
+                const outputTokens = parsed.usage.completion_tokens ?? 0
+                const totalTokens = parsed.usage.total_tokens ?? inputTokens + outputTokens
+                const cachedRaw = parsed.usage.prompt_tokens_details?.cached_tokens
+                const usage: TokenUsage =
+                  cachedRaw !== undefined
+                    ? { inputTokens, outputTokens, totalTokens, cachedInputTokens: cachedRaw }
+                    : { inputTokens, outputTokens, totalTokens }
+                onUsage(usage)
               }
             } catch (e) {
               if (e instanceof Error && e.message === 'Stream error') throw e

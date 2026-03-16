@@ -26,10 +26,11 @@ Para validar que a UI está correta após implementar features:
 2. **Lançar com CDP** — Executar o app com `--remote-debugging-port=9222` (ex.: script no package.json ou binário em dist).
 3. **Conectar** — `agent-browser connect 9222` (ou `npx agent-browser connect 9222`).
 4. **Snapshot** — `agent-browser snapshot -i` para listar elementos e refs.
-5. **Screenshot** — `agent-browser screenshot nome.png` para inspeção visual.
+5. **Inspeção** — Validar renderização, textos e estados esperados usando snapshot, `agent-browser get text` e interações necessárias.
 6. **Dark mode** — Usar `--color-scheme dark` ou `AGENT_BROWSER_COLOR_SCHEME=dark` se o app estiver em tema escuro.
 
-O agente pode usar esse fluxo para verificar se layout, textos e botões estão corretos.
+O agente pode usar esse fluxo para verificar se layout, textos e botões estão corretos sem captura de imagem no fluxo diário.
+Captura de screenshots/imagens deve ser usada apenas via comando específico de teste visual (ex.: `/test-ui-electron`) quando houver necessidade explícita de evidência.
 
 ## Registro
 

@@ -1,7 +1,8 @@
 import path from 'node:path'
 import { unlink } from 'node:fs/promises'
 import { resolveRuntimeConfig } from '../config/env.js'
-import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { createFeedbackController, type FeedbackMode } from '../cli/renderer.js'
 import {
   type DeepDiveSessionState,
   type SuggestedLeadState
@@ -33,7 +34,7 @@ export interface RunDeepDiveNextOptions {
   selfRepairEnabled?: boolean
   selfRepairMaxRounds?: number
   feedbackMode?: FeedbackMode
-  feedback?: FeedbackController
+  feedback?: UiFeedbackController
 }
 
 interface FollowupIntentResult {
@@ -109,7 +110,7 @@ export async function runDeepDiveNext(options: RunDeepDiveNextOptions): Promise<
       text
     })
   } else {
-    feedback.finalSummary('Sessao encerrada', [
+    feedback.summary('Sessao encerrada', [
       'Nao ha pendencias nesta sessao.',
       'Se quiser nova rodada, execute: pnpm reverso deep-dive'
     ])
@@ -124,7 +125,7 @@ async function handlePlanDecision(input: {
   session: DeepDiveSessionRecord
   intent: FollowupIntentResult
   runtime: Awaited<ReturnType<typeof resolveRuntimeConfig>>
-  feedback: FeedbackController
+  feedback: UiFeedbackController
   text: string
 }): Promise<void> {
   const { session, intent, runtime, feedback } = input
@@ -134,7 +135,7 @@ async function handlePlanDecision(input: {
       const leadPath = path.join(runtime.paths.leadsDir, `lead-${lead.slug}.md`)
       await unlink(leadPath).catch(() => undefined)
     }
-    feedback.step('Descartando drafts e executando novo deep-dive...', 'in_progress')
+    feedback.stepStart('redo', 'Descartando drafts e executando novo deep-dive...')
     await runDig({
       model: runtime.model,
       responseLanguage: runtime.responseLanguage,
@@ -147,7 +148,7 @@ async function handlePlanDecision(input: {
   }
 
   if (intent.intent !== 'plan_all' && intent.intent !== 'plan_one') {
-    feedback.finalSummary('Resposta ambigua', [
+    feedback.summary('Resposta ambigua', [
       `Nao consegui interpretar com confianca suficiente: "${input.text}"`,
       'Responda com: "plano de todos", "so o primeiro", ou "descarta e refaz".'
     ])
@@ -158,13 +159,13 @@ async function handlePlanDecision(input: {
   if (selected.length === 0) {
     const resolution = resolveLeadTargetFromText(input.text, session.suggestedLeads)
     if (resolution.kind === 'ambiguous' && resolution.candidates && resolution.candidates.length > 0) {
-      feedback.finalSummary('Selecao ambigua', [
+      feedback.summary('Selecao ambigua', [
         'Sua resposta pode apontar para mais de um lead. Escolha explicitamente um alvo:',
         ...resolution.candidates.map((lead, idx) => `${idx + 1}. ${lead.title} (${lead.slug})`),
         'Exemplos: "faz o plano do lead <slug>" ou "faz o plano do lead 2".'
       ])
     } else {
-      feedback.finalSummary('Sem leads selecionados', [
+      feedback.summary('Sem leads selecionados', [
         'Nao foi possivel identificar lead alvo.',
         'Tente "so o primeiro", "plano de todos" ou "faz o plano do lead <slug>".'
       ])
@@ -174,14 +175,14 @@ async function handlePlanDecision(input: {
   if (intent.intent === 'plan_one') {
     const resolution = resolveLeadTargetFromText(input.text, session.suggestedLeads)
     if (resolution.lead) {
-      feedback.info(`Lead resolvido por ${resolution.kind}: ${resolution.lead.title} (${resolution.lead.slug})`)
+      feedback.systemInfo(`Lead resolvido por ${resolution.kind}: ${resolution.lead.title} (${resolution.lead.slug})`)
     }
   }
 
   const sourceSummary = `Latest report: ${session.reportPath}\nSuggested leads: ${session.suggestedLeads.length}`
   const client = new OpenRouterClient(runtime.apiKey)
   for (const lead of selected) {
-    feedback.step(`Gerando Inquiry Plan para ${lead.slug}...`, 'in_progress')
+    feedback.stepStart(`plan-${lead.slug}`, `Gerando Inquiry Plan para ${lead.slug}...`)
     const payload = await createInquiryPlanOnly({
       idea: `${lead.title}\n${lead.description}`,
       sourceSummary,
@@ -201,6 +202,7 @@ async function handlePlanDecision(input: {
       },
       { paths: runtime.paths }
     )
+    feedback.stepComplete(`plan-${lead.slug}`)
     lead.status = 'planned'
   }
 
@@ -210,7 +212,7 @@ async function handlePlanDecision(input: {
   await setActiveSession(runtime.paths, session.sessionId)
 
   const planned = selected.map((lead, idx) => `${idx + 1}. ${lead.title} (${lead.slug})`)
-  feedback.finalSummary('Inquiry plans prontos', [
+  feedback.summary('Inquiry plans prontos', [
     `Planos criados para ${selected.length} lead(s):`,
     ...planned,
     'Proximo passo: deseja executar inquiry para todos ou para um lead especifico?',
@@ -222,13 +224,13 @@ async function handleInquiryExecutionDecision(input: {
   session: DeepDiveSessionRecord
   intent: FollowupIntentResult
   runtime: Awaited<ReturnType<typeof resolveRuntimeConfig>>
-  feedback: FeedbackController
+  feedback: UiFeedbackController
   text: string
 }): Promise<void> {
   const { session, intent, runtime, feedback } = input
   const plannedLeads = session.suggestedLeads.filter((lead) => lead.status === 'planned')
   if (plannedLeads.length === 0) {
-    feedback.finalSummary('Sem leads planejados', [
+    feedback.summary('Sem leads planejados', [
       'Nao ha leads com Inquiry Plan nesta sessao.',
       'Responda para gerar plano antes de executar inquiry.'
     ])
@@ -243,7 +245,7 @@ async function handleInquiryExecutionDecision(input: {
       ...(intent.targetTitle ? { preferredTitle: intent.targetTitle } : {})
     })
     if (resolution.kind === 'ambiguous' && resolution.candidates && resolution.candidates.length > 0) {
-      feedback.finalSummary('Selecao ambigua para execucao', [
+      feedback.summary('Selecao ambigua para execucao', [
         'Mais de um lead corresponde ao pedido. Escolha explicitamente:',
         ...resolution.candidates.map((lead, idx) => `${idx + 1}. ${lead.title} (${lead.slug})`),
         'Exemplos: "executa o lead <slug>" ou "executa o lead 1".'
@@ -251,14 +253,14 @@ async function handleInquiryExecutionDecision(input: {
       return
     }
     if (resolution.lead) {
-      feedback.info(
+      feedback.systemInfo(
         `Lead de execucao resolvido por ${resolution.kind}: ${resolution.lead.title} (${resolution.lead.slug})`
       )
     }
     const picked = resolution.lead
     selected = picked ? [picked] : []
   } else if (intent.intent !== 'execute_all') {
-    feedback.finalSummary('Aguardando confirmacao de execucao', [
+    feedback.summary('Aguardando confirmacao de execucao', [
       'Responda com "executa todos" ou "executa o primeiro".'
     ])
     return
@@ -288,7 +290,7 @@ async function handleInquiryExecutionDecision(input: {
   session.updatedAt = new Date().toISOString()
   await saveSession(runtime.paths, session)
   await setActiveSession(runtime.paths, session.sessionId)
-  feedback.finalSummary('Fluxo concluido', [
+  feedback.summary('Fluxo concluido', [
     `Inquiry executada para ${selected.length} lead(s).`,
     'Sessao marcada como concluida.'
   ])

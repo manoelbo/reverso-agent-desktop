@@ -520,9 +520,9 @@ export async function runQueue(options: QueueRunnerOptions): Promise<void> {
       : `${total} documento(s) processado(s).`
   console.log(`\nFila concluída: ${summary}`)
   if (feedback) {
-    feedback.info(`Plano JSON: ${relPath(planJsonPath)}`)
-    feedback.info(`Plano MD: ${relPath(planMdPath)}`)
-    feedback.finalSummary('doc-process queue finalizado', [
+    feedback.systemInfo(`Plano JSON: ${relPath(planJsonPath)}`)
+    feedback.systemInfo(`Plano MD: ${relPath(planMdPath)}`)
+    feedback.summary('doc-process queue finalizado', [
       summary,
       `Plano persistido: ${relPath(planMdPath)}`
     ])

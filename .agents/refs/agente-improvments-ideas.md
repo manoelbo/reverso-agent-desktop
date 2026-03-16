@@ -152,15 +152,13 @@ Capacidades novas do blueprint:
 
 ## P1 - Impacto estrutural
 
-1. **Matriz de permissao estilo OpenCode**
-   - Definir capacidades e regras `allow/ask/deny` por ambiente e comando.
-2. **Hooks de compliance estilo Cline**
+1. **Hooks de compliance estilo Cline**
    - `PreToolUse` e `PostToolUse` para validar politica legal/editorial.
-3. **Subagentes por dominio estilo Learn-Claude-Code**
+2. **Subagentes por dominio estilo Learn-Claude-Code**
    - Isolamento de contexto e consolidacao por coordenador.
-4. **Checkpoints de investigacao**
+3. **Checkpoints de investigacao**
    - Restaurar estado de artefatos e decisao em pontos de controle.
-5. **Governanca editorial no schema Markdown**
+4. **Governanca editorial no schema Markdown**
    - Adicionar aprovador, data, status, criterio de publicacao e observacoes legais.
 
 ## P2 - Escala e sofisticacao

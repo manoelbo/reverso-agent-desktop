@@ -75,7 +75,7 @@ Usar a **skill electron** (ler `.cursor/skills/electron/SKILL.md`):
 3. **Conectar** — `agent-browser connect 9222` (ou `npx agent-browser connect 9222`).
 4. **Snapshot** — `agent-browser snapshot -i` para listar elementos interativos e refs (@e1, @e2, …).
 5. **Executar checks de aceitação** — Conforme o plano ou ACCEPTANCE CRITERIA: clicar em botões (`agent-browser click @eN`), preencher campos (`agent-browser fill @eN "valor"`), navegar, verificar texto (`agent-browser get text @eN`). Re-snapshot após mudanças de estado.
-6. **Screenshot** — `agent-browser screenshot nome.png` para registro visual do estado final.
+6. **Inspecionar resultado** — Confirmar que os elementos esperados renderizaram e que não há erros visíveis de UI/fluxo via snapshots, texto e estado dos elementos, sem screenshot no fluxo diário.
 7. **Dark mode** — Se o app usar tema escuro: `AGENT_BROWSER_COLOR_SCHEME=dark agent-browser connect 9222` (e comandos seguintes).
 
 #### Opção B — App na web (localhost ou URL)
@@ -86,7 +86,7 @@ Quando o app estiver acessível em uma URL (ex.: dev server em `http://localhost
 2. **Abrir no browser** — Usar o MCP **cursor-ide-browser**: `browser_navigate` com a URL do app (ex.: `http://localhost:5173`).
 3. **Snapshot** — `browser_snapshot` (com `interactive: true` para elementos clicáveis) para obter a árvore e refs dos elementos.
 4. **Executar checks de aceitação** — Conforme o plano: `browser_click` em elementos, `browser_type` ou `browser_fill` em campos, `browser_press_key` se necessário. Fazer novo `browser_snapshot` após navegação ou mudança de estado.
-5. **Screenshot** — `browser_take_screenshot` para registrar o estado da tela.
+5. **Inspecionar resultado** — Verificar renderização, presença dos elementos esperados e ausência de erros visíveis usando snapshots e inspeção dos elementos, sem screenshot no fluxo diário.
 
 Ordem do MCP browser: primeiro `browser_navigate`, depois `browser_lock` antes de interações; ao terminar, `browser_unlock`.
 
@@ -124,8 +124,8 @@ Entregar um resumo objetivo:
 ```
 
 ### Teste visual / interativo (quando aplicável)
-- Se foi usado **skill electron**: port CDP, passos executados (snapshot, click, fill, etc.) e caminho do screenshot.
-- Se foi usado **MCP cursor-ide-browser**: URL aberta, passos executados e resultado (e.g. screenshot salvo). Quando aplicável, indicar se foram seguidas as orientações da skill/plugin Vercel para teste em browser.
+- Se foi usado **skill electron**: port CDP, passos executados (snapshot, click, fill, get text, etc.) e resultado da inspeção (elementos encontrados, estados e erros visíveis).
+- Se foi usado **MCP cursor-ide-browser**: URL aberta, passos executados e resultado da inspeção (elementos encontrados, estados e erros visíveis). Quando aplicável, indicar se foram seguidas as orientações da skill/plugin Vercel para teste em browser.
 - Se não houve passo de teste visual (plano sem UI/Electron), indicar "N/A".
 
 ### Pronto para commit

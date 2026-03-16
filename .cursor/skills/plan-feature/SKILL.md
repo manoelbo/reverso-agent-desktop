@@ -85,7 +85,7 @@ Transformar um pedido de feature em um **plano de implementação completo** por
 
 ### Fase 4: Geração do plano (template)
 
-Na Fase 4, abrir `.cursor/skills/plan-feature/SKILL.md`, seção **"Template do plano"**, e preencher **todas** as seções com base nas Fases 1–3 (e em referências Context7 apenas se tiver feito pesquisa opcional). Gerar **um único arquivo** em `.agents/plans/{kebab-case-descriptive-name}.md`. Criar o diretório `.agents/plans/` se não existir. Quando a feature tiver UI ou Electron, preencher também a seção **VISUAL / E2E CHECKS** com passos concretos (abrir URL/app, snapshot, verificar elemento, clicar, verificar resultado, screenshot) e indicar se o teste é via Electron (CDP) ou web (localhost/URL).
+Na Fase 4, abrir `.cursor/skills/plan-feature/SKILL.md`, seção **"Template do plano"**, e preencher **todas** as seções com base nas Fases 1–3 (e em referências Context7 apenas se tiver feito pesquisa opcional). Gerar **um único arquivo** em `.agents/plans/{kebab-case-descriptive-name}.md`. Criar o diretório `.agents/plans/` se não existir. Quando a feature tiver UI ou Electron, preencher também a seção **VISUAL / E2E CHECKS** com passos concretos (abrir URL/app, snapshot, verificar elemento, clicar, verificar resultado por inspeção) e indicar se o teste é via Electron (CDP) ou web (localhost/URL).
 
 ---
 
@@ -229,7 +229,8 @@ Quando a feature envolver interface ou app desktop, descrever passos concretos p
 1. Abrir [URL ou app com CDP]; fazer snapshot.
 2. Verificar que [elemento/fluxo X] está visível.
 3. Clicar em [alvo Y]; verificar que [resultado Z].
-4. Screenshot final para registro.
+4. Confirmar por inspeção (snapshot/elementos/texto) que o resultado final está correto.
+5. Se houver comando específico de teste com imagens, registrar screenshot apenas nesse contexto.
 
 ---
 

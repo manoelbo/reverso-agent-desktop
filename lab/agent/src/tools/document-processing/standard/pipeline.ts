@@ -157,6 +157,11 @@ export async function runStandardProcess(params: StandardProcessParams): Promise
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
+  if (cp.steps.preview !== 'done') {
+    for (const key of Object.keys(cp.steps) as StepName[]) {
+      if (key !== 'preview') cp.steps[key] = 'pending'
+    }
+  }
 
   const usages: OpenRouterUsage[] = [cp.usage]
   let checkpointSaveQueue: Promise<void> = Promise.resolve()

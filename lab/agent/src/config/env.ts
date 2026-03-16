@@ -7,6 +7,9 @@ import {
   type ArtifactLanguage,
   type ResponseLanguage
 } from '../core/language.js'
+import type { GovernanceValidationMode } from '../core/editorial-governance.js'
+import type { EvidenceVerificationMode } from '../core/evidence-semantic-verifier.js'
+import type { SensitiveDataPolicyMode } from '../core/sensitive-data-policy.js'
 
 export interface RuntimeConfig {
   paths: LabPaths
@@ -29,6 +32,15 @@ export interface RuntimeConfig {
   preWriteValidationStrict: boolean
   criticalWriteGateEnabled: boolean
   requireExplicitWriteApproval: boolean
+  p1ComplianceHooksEnabled: boolean
+  p1DomainSubagentsEnabled: boolean
+  p1CheckpointEnabled: boolean
+  p1CheckpointRestore: boolean
+  editorialGovernanceMode: GovernanceValidationMode
+  p2InquiryBatchConcurrency: number
+  p2EvidenceVerificationMode: EvidenceVerificationMode
+  p2ObservabilityEnabled: boolean
+  p2SensitiveDataPolicyMode: SensitiveDataPolicyMode
   defaultResponseLanguage: 'en'
   defaultArtifactLanguage: 'source'
 }
@@ -52,6 +64,16 @@ export async function resolveRuntimeConfig(opts?: {
   preWriteValidationStrict?: boolean
   criticalWriteGateEnabled?: boolean
   requireExplicitWriteApproval?: boolean
+  p1ComplianceHooksEnabled?: boolean
+  p1DomainSubagentsEnabled?: boolean
+  p1CheckpointEnabled?: boolean
+  p1CheckpointRestore?: boolean
+  editorialGovernanceEnabled?: boolean
+  editorialGovernanceStrict?: boolean
+  p2InquiryBatchConcurrency?: number
+  p2EvidenceVerificationMode?: EvidenceVerificationMode
+  p2ObservabilityEnabled?: boolean
+  p2SensitiveDataPolicyMode?: SensitiveDataPolicyMode
 }): Promise<RuntimeConfig> {
   const paths = await resolveLabPaths(process.cwd())
   dotenv.config({ path: path.join(paths.projectRoot, '.env.local') })
@@ -149,6 +171,59 @@ export async function resolveRuntimeConfig(opts?: {
     process.env.AGENT_LAB_REQUIRE_EXPLICIT_WRITE_APPROVAL,
     true
   )
+  const p1ComplianceHooksEnabled = resolveBooleanFlag(
+    opts?.p1ComplianceHooksEnabled,
+    process.env.AGENT_LAB_P1_COMPLIANCE_HOOKS_ENABLED,
+    false
+  )
+  const p1DomainSubagentsEnabled = resolveBooleanFlag(
+    opts?.p1DomainSubagentsEnabled,
+    process.env.AGENT_LAB_P1_DOMAIN_SUBAGENTS_ENABLED,
+    false
+  )
+  const p1CheckpointEnabled = resolveBooleanFlag(
+    opts?.p1CheckpointEnabled,
+    process.env.AGENT_LAB_P1_CHECKPOINT_ENABLED,
+    false
+  )
+  const p1CheckpointRestore = resolveBooleanFlag(
+    opts?.p1CheckpointRestore,
+    process.env.AGENT_LAB_P1_CHECKPOINT_RESTORE,
+    false
+  )
+  const editorialGovernanceEnabled = resolveBooleanFlag(
+    opts?.editorialGovernanceEnabled,
+    process.env.AGENT_LAB_EDITORIAL_GOVERNANCE_ENABLED,
+    false
+  )
+  const editorialGovernanceStrict = resolveBooleanFlag(
+    opts?.editorialGovernanceStrict,
+    process.env.AGENT_LAB_EDITORIAL_GOVERNANCE_STRICT,
+    false
+  )
+  const editorialGovernanceMode: GovernanceValidationMode = editorialGovernanceEnabled
+    ? editorialGovernanceStrict
+      ? 'strict'
+      : 'soft'
+    : 'off'
+  const p2InquiryBatchConcurrency = resolvePositiveInt(
+    opts?.p2InquiryBatchConcurrency,
+    process.env.AGENT_LAB_P2_INQUIRY_BATCH_CONCURRENCY,
+    1
+  )
+  const p2EvidenceVerificationMode = resolveEvidenceMode(
+    opts?.p2EvidenceVerificationMode,
+    process.env.AGENT_LAB_P2_EVIDENCE_VERIFICATION_MODE
+  )
+  const p2ObservabilityEnabled = resolveBooleanFlag(
+    opts?.p2ObservabilityEnabled,
+    process.env.AGENT_LAB_P2_OBSERVABILITY_ENABLED,
+    true
+  )
+  const p2SensitiveDataPolicyMode = resolveSensitiveMode(
+    opts?.p2SensitiveDataPolicyMode,
+    process.env.AGENT_LAB_P2_SENSITIVE_DATA_POLICY_MODE
+  )
 
   return {
     paths,
@@ -171,9 +246,42 @@ export async function resolveRuntimeConfig(opts?: {
     preWriteValidationStrict,
     criticalWriteGateEnabled,
     requireExplicitWriteApproval,
+    p1ComplianceHooksEnabled,
+    p1DomainSubagentsEnabled,
+    p1CheckpointEnabled,
+    p1CheckpointRestore,
+    editorialGovernanceMode,
+    p2InquiryBatchConcurrency,
+    p2EvidenceVerificationMode,
+    p2ObservabilityEnabled,
+    p2SensitiveDataPolicyMode,
     defaultResponseLanguage: 'en',
     defaultArtifactLanguage: 'source'
   }
+}
+
+function resolveEvidenceMode(
+  direct: EvidenceVerificationMode | undefined,
+  envValue: string | undefined
+): EvidenceVerificationMode {
+  if (direct === 'lexical' || direct === 'semantic' || direct === 'hybrid') return direct
+  const normalized = envValue?.trim().toLowerCase()
+  if (normalized === 'semantic' || normalized === 'hybrid' || normalized === 'lexical') {
+    return normalized
+  }
+  return 'lexical'
+}
+
+function resolveSensitiveMode(
+  direct: SensitiveDataPolicyMode | undefined,
+  envValue: string | undefined
+): SensitiveDataPolicyMode {
+  if (direct === 'off' || direct === 'warn' || direct === 'strict') return direct
+  const normalized = envValue?.trim().toLowerCase()
+  if (normalized === 'off' || normalized === 'warn' || normalized === 'strict') {
+    return normalized
+  }
+  return 'warn'
 }
 
 function resolvePositiveInt(

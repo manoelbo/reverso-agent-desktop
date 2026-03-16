@@ -3,6 +3,11 @@ import { readFile } from 'node:fs/promises'
 import type { FindingEvidence } from './contracts.js'
 import { detectLanguageFromText, type LanguageCode } from './language.js'
 import type { LabPaths } from './paths.js'
+import {
+  validateEditorialGovernanceTargets,
+  type EditorialGovernanceTarget,
+  type GovernanceValidationMode
+} from './editorial-governance.js'
 
 interface AllegationLike {
   id: string
@@ -22,6 +27,8 @@ export interface InquiryPreWriteValidationInput {
   findings: FindingLike[]
   reviewQueue: FindingLike[]
   expectedLanguage?: LanguageCode
+  editorialGovernanceTargets?: EditorialGovernanceTarget[]
+  editorialGovernanceMode?: GovernanceValidationMode
   paths: LabPaths
 }
 
@@ -131,6 +138,18 @@ export async function validateInquiryPreWrite(
       warnings.push(
         `Possível inconsistência de idioma: esperado=${input.expectedLanguage}, detectado=${detected}.`
       )
+    }
+  }
+
+  const governanceMode = input.editorialGovernanceMode ?? 'off'
+  if (governanceMode !== 'off') {
+    const governanceResult = validateEditorialGovernanceTargets(
+      input.editorialGovernanceTargets ?? [],
+      governanceMode
+    )
+    warnings.push(...governanceResult.warnings)
+    if (!governanceResult.ok) {
+      errors.push(...governanceResult.errors)
     }
   }
 

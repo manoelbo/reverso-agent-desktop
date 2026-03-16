@@ -48,7 +48,7 @@ Usar o **shadcn MCP** no Cursor para busca por linguagem natural ou a CLI (`pnpm
 | **plan-feature** | Planejar uma feature completa (análise, Context7, plano em disco). Nunca escreve código. |
 | **inspiration-research** | Pesquisar inspiração nos projetos em `.agents/inspirations/` (subagentes explore + decisor). |
 | **full-stack-electron** | Consultar padrões e API do Electron (main/renderer, IPC, BrowserWindow, packaging). |
-| **electron** (CDP) | Testar o app visualmente: lançar com `--remote-debugging-port`, conectar via agent-browser, snapshot/screenshot. |
+| **electron** (CDP) | Validar UI por inspeção no navegador: lançar com `--remote-debugging-port`, conectar via agent-browser, snapshot e verificação de elementos/texto. |
 
 ## Comandos
 
@@ -81,10 +81,10 @@ Após implementar UI ou fluxos visuais, usar a skill **electron** (`.cursor/skil
 2. **Lançar com CDP** — App deve ser iniciado com `--remote-debugging-port=9222` (ex.: `./dist/mac/App.app/Contents/MacOS/App --remote-debugging-port=9222` ou via script).
 3. **Conectar** — `agent-browser connect 9222` (ou `npx agent-browser connect 9222`).
 4. **Snapshot** — `agent-browser snapshot -i` para listar elementos interativos.
-5. **Screenshot** — `agent-browser screenshot estado-atual.png` para validar visualmente.
+5. **Inspeção** — Verificar elementos, texto e estados esperados via snapshot/`agent-browser get text` e interações necessárias (click/fill) sem screenshot no fluxo diário.
 6. **Dark mode** — Usar `--color-scheme dark` ou `AGENT_BROWSER_COLOR_SCHEME=dark` para preservar tema escuro.
 
-O agente pode assim validar se o que foi implementado está correto na tela (layout, botões, texto).
+O agente pode assim validar se o que foi implementado está correto na tela (layout, botões, texto) por inspeção. Captura de imagem deve ficar para comandos específicos de teste com evidência visual.
 
 ## Documentação do projeto
 

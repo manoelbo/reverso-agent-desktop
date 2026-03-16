@@ -1,7 +1,8 @@
 import path from 'node:path'
 import { access, readdir, readFile } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
-import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { createFeedbackController, type FeedbackMode } from '../cli/renderer.js'
 import { resolveRuntimeConfig } from '../config/env.js'
 import { parseStrictJson } from '../core/json-contract.js'
 import { type DeepDiveSessionState } from '../core/deep-dive-session.js'
@@ -10,8 +11,10 @@ import { OpenRouterClient } from '../llm/openrouter-client.js'
 import {
   buildAgentRouterSystemPrompt,
   buildAgentRouterUserPrompt,
-  type AgentRouterIntent
+  type AgentRouterIntent,
+  type SourceStateContext
 } from '../prompts/agent-router.js'
+import type { SystemState } from '../server/state-detector.js'
 import { createInquiryPlanOnly } from './run-create-lead.js'
 import { runCreateLead } from './run-create-lead.js'
 import { runAgentSetup } from './run-agent-instructions.js'
@@ -20,6 +23,7 @@ import { resolveLeadTargetFromText } from './run-deep-dive-next.js'
 import { runDig } from './run-dig.js'
 import { runInit } from './run-init.js'
 import { runInquiry } from './run-inquiry.js'
+import { runInquiryBatchConcurrent } from './inquiry-batch-runner.js'
 import { updateLeadPlanAndStatus } from '../tools/investigative/create-lead-file.js'
 
 export interface RunAgentOptions {
@@ -38,11 +42,21 @@ export interface RunAgentOptions {
   preWriteValidationStrict?: boolean
   criticalWriteGateEnabled?: boolean
   requireExplicitWriteApproval?: boolean
+  p1ComplianceHooksEnabled?: boolean
+  p1DomainSubagentsEnabled?: boolean
+  p1CheckpointEnabled?: boolean
+  p1CheckpointRestore?: boolean
+  editorialGovernanceEnabled?: boolean
+  editorialGovernanceStrict?: boolean
+  p2InquiryBatchConcurrency?: number
+  p2EvidenceVerificationMode?: 'lexical' | 'semantic' | 'hybrid'
+  p2ObservabilityEnabled?: boolean
+  p2SensitiveDataPolicyMode?: 'off' | 'warn' | 'strict'
   feedbackMode?: FeedbackMode
-  feedback?: FeedbackController
+  feedback?: UiFeedbackController
 }
 
-interface LeadSummary {
+export interface LeadSummary {
   slug: string
   title: string
   description: string
@@ -71,14 +85,22 @@ export interface InquiryBatchResult {
   failedLeads: InquiryBatchFailure[]
 }
 
-type AgentRouteAction =
+export type AgentRouteAction =
   | { kind: 'deep_dive_next'; reason: string }
   | { kind: 'deep_dive'; reason: string }
   | { kind: 'init'; reason: string }
   | { kind: 'create_lead'; reason: string; idea?: string }
   | { kind: 'plan_leads'; reason: string; leads: LeadSummary[] }
   | { kind: 'execute_inquiry'; reason: string; leads: LeadSummary[]; autoPlanDrafts: boolean }
-  | { kind: 'ask_clarify'; reason: string; lines: string[] }
+  // Renamed from ask_clarify (E2)
+  | { kind: 'general_chat'; reason: string; lines: string[] }
+  // New kinds (E2) — handlers implemented in future sprints
+  | { kind: 'greeting'; reason: string }
+  | { kind: 'quick_research'; reason: string }
+  | { kind: 'view_data'; reason: string }
+  | { kind: 'update_agent_context'; reason: string }
+  | { kind: 'process_documents'; reason: string }
+  | { kind: 'abort'; reason: string }
 
 const DEFAULT_REASON = 'heuristic fallback'
 
@@ -124,6 +146,36 @@ export async function runAgent(options: RunAgentOptions): Promise<void> {
       : {}),
     ...(typeof options.requireExplicitWriteApproval === 'boolean'
       ? { requireExplicitWriteApproval: options.requireExplicitWriteApproval }
+      : {}),
+    ...(typeof options.p1ComplianceHooksEnabled === 'boolean'
+      ? { p1ComplianceHooksEnabled: options.p1ComplianceHooksEnabled }
+      : {}),
+    ...(typeof options.p1DomainSubagentsEnabled === 'boolean'
+      ? { p1DomainSubagentsEnabled: options.p1DomainSubagentsEnabled }
+      : {}),
+    ...(typeof options.p1CheckpointEnabled === 'boolean'
+      ? { p1CheckpointEnabled: options.p1CheckpointEnabled }
+      : {}),
+    ...(typeof options.p1CheckpointRestore === 'boolean'
+      ? { p1CheckpointRestore: options.p1CheckpointRestore }
+      : {}),
+    ...(typeof options.editorialGovernanceEnabled === 'boolean'
+      ? { editorialGovernanceEnabled: options.editorialGovernanceEnabled }
+      : {}),
+    ...(typeof options.editorialGovernanceStrict === 'boolean'
+      ? { editorialGovernanceStrict: options.editorialGovernanceStrict }
+      : {}),
+    ...(typeof options.p2InquiryBatchConcurrency === 'number'
+      ? { p2InquiryBatchConcurrency: options.p2InquiryBatchConcurrency }
+      : {}),
+    ...(options.p2EvidenceVerificationMode
+      ? { p2EvidenceVerificationMode: options.p2EvidenceVerificationMode }
+      : {}),
+    ...(typeof options.p2ObservabilityEnabled === 'boolean'
+      ? { p2ObservabilityEnabled: options.p2ObservabilityEnabled }
+      : {}),
+    ...(options.p2SensitiveDataPolicyMode
+      ? { p2SensitiveDataPolicyMode: options.p2SensitiveDataPolicyMode }
       : {})
   })
 
@@ -149,21 +201,35 @@ export async function runAgent(options: RunAgentOptions): Promise<void> {
     apiKey: runtime.apiKey
   })
 
-  feedback.step('Mensagem recebida em modo conversacional', 'in_progress', text)
-  feedback.info(`Roteamento: ${route.kind} (${route.reason})`)
+  feedback.stepStart('route', 'Mensagem recebida em modo conversacional', text)
+  feedback.routeDecision(route.kind, route.reason)
+  feedback.stepComplete('route')
 
   const shouldUpdateContext =
     hasAgentContext && shouldCaptureInvestigationContext(text) && route.kind !== 'deep_dive_next'
   if (shouldUpdateContext) {
-    feedback.step('Atualizando memoria de contexto em agent.md...', 'in_progress')
+    feedback.stepStart('update-context', 'Atualizando memoria de contexto em agent.md...')
     await runAgentSetup({
       text,
       feedback
     })
   }
 
-  if (route.kind === 'ask_clarify') {
-    feedback.finalSummary('Preciso de confirmacao', route.lines)
+  if (route.kind === 'general_chat') {
+    feedback.summary('Preciso de confirmacao', route.lines)
+    if (ownsFeedback) await feedback.flush()
+    return
+  }
+
+  if (
+    route.kind === 'greeting' ||
+    route.kind === 'quick_research' ||
+    route.kind === 'view_data' ||
+    route.kind === 'update_agent_context' ||
+    route.kind === 'process_documents' ||
+    route.kind === 'abort'
+  ) {
+    feedback.summary('Ação reconhecida', [route.reason])
     if (ownsFeedback) await feedback.flush()
     return
   }
@@ -233,7 +299,7 @@ export async function runAgent(options: RunAgentOptions): Promise<void> {
       },
       feedback
     })
-    feedback.finalSummary('Planejamento concluido', [
+    feedback.summary('Planejamento concluido', [
       `Inquiry Plan atualizado para ${route.leads.length} lead(s).`,
       'Proximo passo: diga "pode fazer a investigacao dos leads" para executar inquiry.'
     ])
@@ -244,7 +310,7 @@ export async function runAgent(options: RunAgentOptions): Promise<void> {
   if (route.kind === 'execute_inquiry') {
     const draftLeads = route.leads.filter((lead) => lead.status === 'draft')
     if (route.autoPlanDrafts && draftLeads.length > 0) {
-      feedback.step('Leads em draft detectados: gerando Inquiry Plan antes da execucao...', 'in_progress')
+      feedback.stepStart('auto-plan-drafts', 'Leads em draft detectados: gerando Inquiry Plan antes da execucao...')
       await planLeads({
         leads: draftLeads,
         runtime: {
@@ -259,31 +325,56 @@ export async function runAgent(options: RunAgentOptions): Promise<void> {
       })
     }
 
-    const batchResult = await executeInquiryBatch({
-      leads: route.leads.map((lead) => lead.slug),
-      runOne: async (leadSlug) => {
-        await runInquiry({
-          lead: leadSlug,
-          model: runtime.model,
-          responseLanguage: runtime.responseLanguage,
-          enablePev: runtime.enablePev,
-          selfRepairEnabled: runtime.selfRepairEnabled,
-          selfRepairMaxRounds: runtime.selfRepairMaxRounds,
-          evidenceGateEnabled: runtime.evidenceGateEnabled,
-          evidenceMinConfidence: runtime.evidenceMinConfidence,
-          enrichedToolManifestEnabled: runtime.enrichedToolManifestEnabled,
-          strictPlanningValidation: runtime.strictPlanningValidation,
-          preWriteValidationEnabled: runtime.preWriteValidationEnabled,
-          preWriteValidationStrict: runtime.preWriteValidationStrict,
-          criticalWriteGateEnabled: runtime.criticalWriteGateEnabled,
-          requireExplicitWriteApproval: runtime.requireExplicitWriteApproval,
-          feedback
-        })
-      }
-    })
+    const runOneLead = async (leadSlug: string): Promise<void> => {
+      await runInquiry({
+        lead: leadSlug,
+        model: runtime.model,
+        responseLanguage: runtime.responseLanguage,
+        enablePev: runtime.enablePev,
+        selfRepairEnabled: runtime.selfRepairEnabled,
+        selfRepairMaxRounds: runtime.selfRepairMaxRounds,
+        evidenceGateEnabled: runtime.evidenceGateEnabled,
+        evidenceMinConfidence: runtime.evidenceMinConfidence,
+        enrichedToolManifestEnabled: runtime.enrichedToolManifestEnabled,
+        strictPlanningValidation: runtime.strictPlanningValidation,
+        preWriteValidationEnabled: runtime.preWriteValidationEnabled,
+        preWriteValidationStrict: runtime.preWriteValidationStrict,
+        criticalWriteGateEnabled: runtime.criticalWriteGateEnabled,
+        requireExplicitWriteApproval: runtime.requireExplicitWriteApproval,
+        p1ComplianceHooksEnabled: runtime.p1ComplianceHooksEnabled,
+        p1DomainSubagentsEnabled: runtime.p1DomainSubagentsEnabled,
+        p1CheckpointEnabled: runtime.p1CheckpointEnabled,
+        p1CheckpointRestore: runtime.p1CheckpointRestore,
+        editorialGovernanceEnabled: runtime.editorialGovernanceMode !== 'off',
+        editorialGovernanceStrict: runtime.editorialGovernanceMode === 'strict',
+        p2EvidenceVerificationMode: runtime.p2EvidenceVerificationMode,
+        p2ObservabilityEnabled: runtime.p2ObservabilityEnabled,
+        p2SensitiveDataPolicyMode: runtime.p2SensitiveDataPolicyMode,
+        feedback
+      })
+    }
+    const batchResult =
+      runtime.p2InquiryBatchConcurrency > 1
+        ? await runInquiryBatchConcurrent({
+            leads: route.leads.map((lead) => lead.slug),
+            maxConcurrency: runtime.p2InquiryBatchConcurrency,
+            investigationDir: runtime.paths.investigationDir,
+            runOne: runOneLead
+          })
+        : await executeInquiryBatch({
+            leads: route.leads.map((lead) => lead.slug),
+            runOne: runOneLead
+          })
     const { succeededLeads, failedLeads } = batchResult
+    const skippedLeads: Array<{ slug: string; reason: string }> =
+      'skippedLeads' in batchResult
+        ? (batchResult.skippedLeads as Array<{ slug: string; reason: string }>)
+        : []
     for (const failure of failedLeads) {
-      feedback.warn(`Inquiry falhou para lead ${failure.slug}: ${failure.message}`)
+      feedback.systemWarn(`Inquiry falhou para lead ${failure.slug}: ${failure.message}`)
+    }
+    for (const skipped of skippedLeads) {
+      feedback.systemWarn(`Inquiry pulado para lead ${skipped.slug}: ${skipped.reason}`)
     }
 
     if (failedLeads.length > 0 && succeededLeads.length === 0) {
@@ -298,13 +389,17 @@ export async function runAgent(options: RunAgentOptions): Promise<void> {
       `Leads solicitados: ${route.leads.length}.`,
       `Sucesso: ${succeededLeads.length}.`,
       `Falhas: ${failedLeads.length}.`,
+      ...(skippedLeads.length > 0 ? [`Pulados: ${skippedLeads.length}.`] : []),
       ...(succeededLeads.length > 0 ? [`Leads concluidos: ${succeededLeads.join(', ')}.`] : []),
       ...(failedLeads.length > 0
         ? [`Leads com erro: ${failedLeads.map((entry) => entry.slug).join(', ')}.`]
         : []),
+      ...(skippedLeads.length > 0
+        ? [`Leads pulados: ${skippedLeads.map((entry) => entry.slug).join(', ')}.`]
+        : []),
       'Revise allegations/findings e, se quiser ampliar cobertura, peça novo deep-dive nas fontes.'
     ]
-    feedback.finalSummary(
+    feedback.summary(
       failedLeads.length > 0 ? 'Execucao de inquiry concluida com falhas parciais' : 'Execucao de inquiry concluida',
       finalLines
     )
@@ -342,6 +437,7 @@ export async function decideAgentRoute(input: {
   leads: LeadSummary[]
   model: string
   apiKey: string
+  systemState?: SystemState
 }): Promise<AgentRouteAction> {
   if (
     input.session &&
@@ -360,8 +456,32 @@ export async function decideAgentRoute(input: {
     hasAgentContext: input.hasAgentContext,
     leads: input.leads,
     model: input.model,
-    apiKey: input.apiKey
+    apiKey: input.apiKey,
+    ...(input.systemState ? { systemState: input.systemState } : {}),
   })
+
+  // New intents (E2)
+  if (intent.intent === 'greeting') {
+    return { kind: 'greeting', reason: intent.reason }
+  }
+  if (intent.intent === 'quick_research') {
+    return { kind: 'quick_research', reason: intent.reason }
+  }
+  if (intent.intent === 'view_data') {
+    return { kind: 'view_data', reason: intent.reason }
+  }
+  if (intent.intent === 'update_agent_context') {
+    return { kind: 'update_agent_context', reason: intent.reason }
+  }
+  if (intent.intent === 'process_documents') {
+    return { kind: 'process_documents', reason: intent.reason }
+  }
+  if (intent.intent === 'general_chat') {
+    return { kind: 'general_chat', reason: intent.reason, lines: [] }
+  }
+  if (intent.intent === 'abort_current') {
+    return { kind: 'abort', reason: intent.reason }
+  }
 
   if (intent.intent === 'run_init') {
     return { kind: 'init', reason: intent.reason }
@@ -384,7 +504,7 @@ export async function decideAgentRoute(input: {
       return { kind: 'init', reason: 'investigation described but agent.md missing' }
     }
     return {
-      kind: 'ask_clarify',
+      kind: 'general_chat',
       reason: intent.reason,
       lines: [
         'Entendi o contexto e atualizei a memoria da investigacao em agent.md.',
@@ -399,7 +519,7 @@ export async function decideAgentRoute(input: {
     const resolution = resolveTargetsFromIntent(input.text, input.leads, intent, 'execute')
     if (resolution.kind === 'ambiguous') {
       return {
-        kind: 'ask_clarify',
+        kind: 'general_chat',
         reason: 'inquiry target ambiguous',
         lines: [
           'Seu pedido de investigacao corresponde a mais de um lead.',
@@ -418,7 +538,7 @@ export async function decideAgentRoute(input: {
       }
     }
     return {
-      kind: 'ask_clarify',
+      kind: 'general_chat',
       reason: 'inquiry target missing',
       lines: [
         'Entendi que voce quer executar investigacao, mas nao identifiquei o alvo.',
@@ -431,7 +551,7 @@ export async function decideAgentRoute(input: {
     const resolution = resolveTargetsFromIntent(input.text, input.leads, intent, 'plan')
     if (resolution.kind === 'ambiguous') {
       return {
-        kind: 'ask_clarify',
+        kind: 'general_chat',
         reason: 'plan target ambiguous',
         lines: [
           'Seu pedido de planejamento corresponde a mais de um lead.',
@@ -448,7 +568,7 @@ export async function decideAgentRoute(input: {
       }
     }
     return {
-      kind: 'ask_clarify',
+      kind: 'general_chat',
       reason: 'plan target missing',
       lines: [
         'Nao encontrei leads para planejar.',
@@ -476,7 +596,7 @@ export async function decideAgentRoute(input: {
     }
     if (resolution.kind === 'ambiguous') {
       return {
-        kind: 'ask_clarify',
+        kind: 'general_chat',
         reason: 'continue-session ambiguous',
         lines: [
           'Nao consegui identificar qual lead voce quer continuar.',
@@ -512,7 +632,7 @@ export async function decideAgentRoute(input: {
   return { kind: 'deep_dive', reason: 'default exploration route' }
 }
 
-function isActionableSession(
+export function isActionableSession(
   session: DeepDiveSessionState | undefined
 ): session is DeepDiveSessionState {
   if (!session) return false
@@ -535,9 +655,21 @@ async function classifyAgentIntent(input: {
   leads: LeadSummary[]
   model: string
   apiKey: string
+  systemState?: SystemState
 }): Promise<RouterResult> {
   const heuristic = heuristicAgentIntent(input.text)
   if (heuristic.intent !== 'unknown') return heuristic
+
+  const sourceState: SourceStateContext | undefined = input.systemState
+    ? {
+        sourceEmpty: input.systemState.sourceEmpty,
+        unprocessedCount: input.systemState.unprocessedFiles.length,
+        processedCount: input.systemState.processedFiles.length,
+        failedCount: input.systemState.failedFiles.length,
+        unprocessedFileNames: input.systemState.unprocessedFiles.map((f) => f.fileName),
+        isFirstVisit: input.systemState.isFirstVisit,
+      }
+    : undefined
 
   const client = new OpenRouterClient(input.apiKey)
   const raw = await client.chatText({
@@ -552,7 +684,8 @@ async function classifyAgentIntent(input: {
         slug: lead.slug,
         title: lead.title,
         status: lead.status
-      }))
+      })),
+      ...(sourceState ? { sourceState } : {}),
     }),
     temperature: 0
   })
@@ -580,7 +713,14 @@ async function classifyAgentIntent(input: {
     'create_lead',
     'plan_inquiry',
     'run_inquiry',
-    'unknown'
+    'greeting',
+    'quick_research',
+    'view_data',
+    'update_agent_context',
+    'process_documents',
+    'general_chat',
+    'abort_current',
+    'unknown',
   ]
   const intentCandidate =
     typeof value.intent === 'string' ? (value.intent as AgentRouterIntent) : 'unknown'
@@ -630,7 +770,10 @@ async function classifyAgentIntent(input: {
 }
 
 export function heuristicAgentIntent(text: string): RouterResult {
-  const normalized = text.toLowerCase()
+  const normalized = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
   const extractIndex = (): number | undefined => {
     if (normalized.includes('primeiro') || normalized.includes('first')) return 1
     if (normalized.includes('segundo') || normalized.includes('second')) return 2
@@ -645,6 +788,86 @@ export function heuristicAgentIntent(text: string): RouterResult {
     const dashed = normalized.match(/\b([a-z0-9]+(?:-[a-z0-9]+)+)\b/)
     if (dashed?.[1]) return dashed[1]
     return undefined
+  }
+
+  // abort_current — check early to avoid false positives with other patterns
+  const isExactAbort =
+    normalized === 'para' ||
+    normalized === 'cancela' ||
+    normalized === 'stop' ||
+    normalized === 'abort'
+  const asksAbort =
+    isExactAbort ||
+    normalized.includes('cancela isso') ||
+    normalized.includes('cancela a operacao') ||
+    normalized.includes('cancela tudo') ||
+    normalized.includes('para tudo') ||
+    normalized.includes('para isso') ||
+    normalized.includes('esquece isso') ||
+    normalized.includes('abort this') ||
+    normalized.includes('cancel this')
+  if (asksAbort) {
+    return { intent: 'abort_current', reason: 'heuristic abort', confidence: 0.95 }
+  }
+
+  // greeting
+  const isExactGreeting =
+    normalized === 'oi' ||
+    normalized === 'ola' ||
+    normalized === 'hello' ||
+    normalized === 'hi' ||
+    normalized === 'hey' ||
+    normalized === 'e ai' ||
+    normalized === 'oi tudo bem'
+  const asksGreeting =
+    isExactGreeting ||
+    normalized.startsWith('bom dia') ||
+    normalized.startsWith('boa tarde') ||
+    normalized.startsWith('boa noite') ||
+    normalized === 'como voce funciona' ||
+    normalized === 'como funciona' ||
+    normalized === 'o que voce faz' ||
+    normalized === 'what is this' ||
+    normalized === 'what can you do' ||
+    normalized === 'how does this work'
+  if (asksGreeting) {
+    return { intent: 'greeting', reason: 'heuristic greeting', confidence: 0.92 }
+  }
+
+  // view_data — listing/viewing existing data
+  const asksViewData =
+    (normalized.includes('mostra') ||
+      normalized.includes('lista') ||
+      normalized.includes('me mostra') ||
+      normalized.includes('show me') ||
+      normalized.includes('list')) &&
+    (normalized.includes('lead') ||
+      normalized.includes('dossie') ||
+      normalized.includes('dossia') ||
+      normalized.includes('alegaca') ||
+      normalized.includes('finding') ||
+      normalized.includes('fonte') ||
+      normalized.includes('source') ||
+      normalized.includes('agent.md'))
+  if (
+    asksViewData &&
+    !normalized.includes('investigar') &&
+    !normalized.includes('executa') &&
+    !normalized.includes('processa')
+  ) {
+    return { intent: 'view_data', reason: 'heuristic view-data', confidence: 0.88 }
+  }
+
+  // process_documents — explicit processing request
+  const asksProcess =
+    (normalized.includes('processa') || normalized.includes('process')) &&
+    (normalized.includes('pdf') ||
+      normalized.includes('arquivo') ||
+      normalized.includes('documento') ||
+      normalized.includes('fonte') ||
+      normalized.includes('file'))
+  if (asksProcess) {
+    return { intent: 'process_documents', reason: 'heuristic process-documents', confidence: 0.90 }
   }
 
   const asksContinue =
@@ -831,7 +1054,7 @@ function resolveTargetsFromIntent(
   return { kind: 'targets', targets: [] }
 }
 
-async function listLeadSummaries(leadsDir: string): Promise<LeadSummary[]> {
+export async function listLeadSummaries(leadsDir: string): Promise<LeadSummary[]> {
   let entries: Dirent[]
   try {
     entries = await readdir(leadsDir, { withFileTypes: true })
@@ -904,7 +1127,7 @@ function shouldCaptureInvestigationContext(text: string): boolean {
   return keywords.some((keyword) => normalized.includes(keyword))
 }
 
-async function planLeads(input: {
+export async function planLeads(input: {
   leads: LeadSummary[]
   runtime: {
     model: string
@@ -914,14 +1137,14 @@ async function planLeads(input: {
     apiKey: string
     paths: Awaited<ReturnType<typeof resolveRuntimeConfig>>['paths']
   }
-  feedback: FeedbackController
+  feedback: UiFeedbackController
 }): Promise<void> {
   if (input.leads.length === 0) return
   const client = new OpenRouterClient(input.runtime.apiKey)
   const sourceSummary = `Planning ${input.leads.length} lead(s) from conversational route.`
   for (const lead of input.leads) {
     if (lead.status === 'planned') continue
-    input.feedback.step(`Gerando Inquiry Plan para ${lead.slug}...`, 'in_progress')
+    input.feedback.stepStart(`plan-${lead.slug}`, `Gerando Inquiry Plan para ${lead.slug}...`)
     const payload = await createInquiryPlanOnly({
       idea: `${lead.title}\n${lead.description}`,
       sourceSummary,
@@ -942,6 +1165,7 @@ async function planLeads(input: {
       },
       { paths: input.runtime.paths }
     )
+    input.feedback.stepComplete(`plan-${lead.slug}`)
     lead.status = 'planned'
   }
 }

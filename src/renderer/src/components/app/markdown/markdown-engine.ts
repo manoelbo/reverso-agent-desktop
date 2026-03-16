@@ -11,16 +11,17 @@ export type ReversoMarkdownDocument = {
 
 export type MarkdownEngineOptions = {
   wikiLinkResolver?: WikiLinkResolver
+  wikiLinkShowIcon?: boolean
 }
 
-function createMarkdownIt(resolver?: WikiLinkResolver): MarkdownIt {
+function createMarkdownIt(resolver?: WikiLinkResolver, wikiLinkShowIcon = false): MarkdownIt {
   const md = new MarkdownIt({
     html: true,
     linkify: true,
     breaks: true,
   })
 
-  wikiLinksPlugin(md, resolver)
+  wikiLinksPlugin(md, resolver, { showIcon: wikiLinkShowIcon })
 
   return md
 }
@@ -31,7 +32,7 @@ function renderEventBodyMarkdown(md: MarkdownIt, body: string): string {
 
 export function renderReversoMarkdownDocument(raw: string, options: MarkdownEngineOptions = {}): ReversoMarkdownDocument {
   const { frontmatter, content } = parseFrontmatter(raw)
-  const md = createMarkdownIt(options.wikiLinkResolver)
+  const md = createMarkdownIt(options.wikiLinkResolver, options.wikiLinkShowIcon)
   // Fase 1: bloqueia HTML bruto do documento para reduzir risco de injeção.
   const sanitizedSource = content.replaceAll("<", "&lt;").replaceAll(">", "&gt;")
   const withEventBlocks = transformEventBlocks(sanitizedSource, (body) => renderEventBodyMarkdown(md, body))

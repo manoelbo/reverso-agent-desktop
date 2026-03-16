@@ -7,6 +7,8 @@ import { runInit } from './runner/run-init.js'
 import { runInquiry } from './runner/run-inquiry.js'
 import { runDocumentProcessing } from './runner/run-document-processing.js'
 import type { FeedbackMode } from './cli/renderer.js'
+import type { EvidenceVerificationMode } from './core/evidence-semantic-verifier.js'
+import type { SensitiveDataPolicyMode } from './core/sensitive-data-policy.js'
 
 function parseFlags(argv: string[]): Record<string, string> {
   const flags: Record<string, string> = {}
@@ -43,7 +45,7 @@ Comandos:
   dig [alias legado de deep-dive]
   deep-dive-next --text "<resposta natural>" [--model <openrouter-model>] [--feedback <plain|compact|visual>] [--response-language <auto|en|pt|es|fr|de|it>] [--pev] [--self-repair] [--self-repair-max-rounds <n>]
   create-lead [--idea "<idea>"] [--model <openrouter-model>] [--feedback <plain|compact|visual>] [--response-language <auto|en|pt|es|fr|de|it>] [--pev] [--self-repair] [--self-repair-max-rounds <n>]
-  inquiry --lead <slug> [--model <openrouter-model>] [--feedback <plain|compact|visual>] [--response-language <auto|en|pt|es|fr|de|it>] [--pev] [--max-steps <n>] [--max-tool-calls <n>] [--max-elapsed-ms <n>] [--confidence-threshold <0-1>] [--self-repair] [--self-repair-max-rounds <n>] [--evidence-gate] [--evidence-min-confidence <0-1>] [--enriched-tool-manifest] [--strict-planning-validation] [--prewrite-validation] [--prewrite-validation-strict] [--critical-write-gate] [--require-explicit-write-approval]
+  inquiry --lead <slug> [--model <openrouter-model>] [--feedback <plain|compact|visual>] [--response-language <auto|en|pt|es|fr|de|it>] [--pev] [--max-steps <n>] [--max-tool-calls <n>] [--max-elapsed-ms <n>] [--confidence-threshold <0-1>] [--self-repair] [--self-repair-max-rounds <n>] [--evidence-gate] [--evidence-min-confidence <0-1>] [--enriched-tool-manifest] [--strict-planning-validation] [--prewrite-validation] [--prewrite-validation-strict] [--critical-write-gate] [--require-explicit-write-approval] [--p1-compliance-hooks] [--p1-domain-subagents] [--p1-checkpoint] [--p1-checkpoint-restore] [--editorial-governance] [--editorial-governance-strict] [--p2-batch-concurrency <n>] [--p2-evidence-mode <lexical|semantic|hybrid>] [--p2-observability <true|false>] [--p2-sensitive-data-policy <off|warn|strict>] [--p2-sensitive-data-strict]
   doc-process <subcommand-or-flags> [--artifact-language <source|en|pt|es|fr|de|it>]
 
 Atalho sem subcomando:
@@ -68,6 +70,18 @@ async function main(): Promise<void> {
   const preWriteValidationStrict = parseBooleanFlag(flags['prewrite-validation-strict'])
   const criticalWriteGateEnabled = parseBooleanFlag(flags['critical-write-gate'])
   const requireExplicitWriteApproval = parseBooleanFlag(flags['require-explicit-write-approval'])
+  const p1ComplianceHooksEnabled = parseBooleanFlag(flags['p1-compliance-hooks'])
+  const p1DomainSubagentsEnabled = parseBooleanFlag(flags['p1-domain-subagents'])
+  const p1CheckpointEnabled = parseBooleanFlag(flags['p1-checkpoint'])
+  const p1CheckpointRestore = parseBooleanFlag(flags['p1-checkpoint-restore'])
+  const editorialGovernanceEnabled = parseBooleanFlag(flags['editorial-governance'])
+  const editorialGovernanceStrict = parseBooleanFlag(flags['editorial-governance-strict'])
+  const p2InquiryBatchConcurrency = parseIntegerFlag(flags['p2-batch-concurrency'])
+  const p2EvidenceVerificationMode = parseEvidenceMode(flags['p2-evidence-mode'])
+  const p2ObservabilityEnabled = parseBooleanFlag(flags['p2-observability'])
+  const p2SensitiveDataPolicyMode = parseSensitivePolicyMode(
+    flags['p2-sensitive-data-strict'] === 'true' ? 'strict' : flags['p2-sensitive-data-policy']
+  )
   const conversationalText = (flags.text ?? flags.prompt ?? rest.find((x) => !x.startsWith('--')) ?? '').trim()
 
   switch (command) {
@@ -98,6 +112,36 @@ async function main(): Promise<void> {
           : {}),
         ...(typeof requireExplicitWriteApproval === 'boolean'
           ? { requireExplicitWriteApproval }
+          : {}),
+        ...(typeof p1ComplianceHooksEnabled === 'boolean'
+          ? { p1ComplianceHooksEnabled }
+          : {}),
+        ...(typeof p1DomainSubagentsEnabled === 'boolean'
+          ? { p1DomainSubagentsEnabled }
+          : {}),
+        ...(typeof p1CheckpointEnabled === 'boolean'
+          ? { p1CheckpointEnabled }
+          : {}),
+        ...(typeof p1CheckpointRestore === 'boolean'
+          ? { p1CheckpointRestore }
+          : {}),
+        ...(typeof editorialGovernanceEnabled === 'boolean'
+          ? { editorialGovernanceEnabled }
+          : {}),
+        ...(typeof editorialGovernanceStrict === 'boolean'
+          ? { editorialGovernanceStrict }
+          : {}),
+        ...(typeof p2InquiryBatchConcurrency === 'number'
+          ? { p2InquiryBatchConcurrency }
+          : {}),
+        ...(p2EvidenceVerificationMode
+          ? { p2EvidenceVerificationMode }
+          : {}),
+        ...(typeof p2ObservabilityEnabled === 'boolean'
+          ? { p2ObservabilityEnabled }
+          : {}),
+        ...(p2SensitiveDataPolicyMode
+          ? { p2SensitiveDataPolicyMode }
           : {}),
         ...(flags['response-language']
           ? { responseLanguage: flags['response-language'] }
@@ -192,6 +236,10 @@ async function main(): Promise<void> {
       return
     }
     case 'inquiry': {
+      if (flags.help === 'true') {
+        printUsage()
+        return
+      }
       const lead = flags.lead ?? rest.find((x) => !x.startsWith('--')) ?? ''
       const maxSteps = parseIntegerFlag(flags['max-steps'])
       const maxToolCalls = parseIntegerFlag(flags['max-tool-calls'])
@@ -227,6 +275,36 @@ async function main(): Promise<void> {
           : {}),
         ...(typeof requireExplicitWriteApproval === 'boolean'
           ? { requireExplicitWriteApproval }
+          : {}),
+        ...(typeof p1ComplianceHooksEnabled === 'boolean'
+          ? { p1ComplianceHooksEnabled }
+          : {}),
+        ...(typeof p1DomainSubagentsEnabled === 'boolean'
+          ? { p1DomainSubagentsEnabled }
+          : {}),
+        ...(typeof p1CheckpointEnabled === 'boolean'
+          ? { p1CheckpointEnabled }
+          : {}),
+        ...(typeof p1CheckpointRestore === 'boolean'
+          ? { p1CheckpointRestore }
+          : {}),
+        ...(typeof editorialGovernanceEnabled === 'boolean'
+          ? { editorialGovernanceEnabled }
+          : {}),
+        ...(typeof editorialGovernanceStrict === 'boolean'
+          ? { editorialGovernanceStrict }
+          : {}),
+        ...(typeof p2InquiryBatchConcurrency === 'number'
+          ? { p2InquiryBatchConcurrency }
+          : {}),
+        ...(p2EvidenceVerificationMode
+          ? { p2EvidenceVerificationMode }
+          : {}),
+        ...(typeof p2ObservabilityEnabled === 'boolean'
+          ? { p2ObservabilityEnabled }
+          : {}),
+        ...(p2SensitiveDataPolicyMode
+          ? { p2SensitiveDataPolicyMode }
           : {}),
         ...(flags['response-language']
           ? { responseLanguage: flags['response-language'] }
@@ -269,6 +347,36 @@ async function main(): Promise<void> {
           ...(typeof requireExplicitWriteApproval === 'boolean'
             ? { requireExplicitWriteApproval }
             : {}),
+          ...(typeof p1ComplianceHooksEnabled === 'boolean'
+            ? { p1ComplianceHooksEnabled }
+            : {}),
+          ...(typeof p1DomainSubagentsEnabled === 'boolean'
+            ? { p1DomainSubagentsEnabled }
+            : {}),
+          ...(typeof p1CheckpointEnabled === 'boolean'
+            ? { p1CheckpointEnabled }
+            : {}),
+          ...(typeof p1CheckpointRestore === 'boolean'
+            ? { p1CheckpointRestore }
+            : {}),
+          ...(typeof editorialGovernanceEnabled === 'boolean'
+            ? { editorialGovernanceEnabled }
+            : {}),
+          ...(typeof editorialGovernanceStrict === 'boolean'
+            ? { editorialGovernanceStrict }
+            : {}),
+          ...(typeof p2InquiryBatchConcurrency === 'number'
+            ? { p2InquiryBatchConcurrency }
+            : {}),
+          ...(p2EvidenceVerificationMode
+            ? { p2EvidenceVerificationMode }
+            : {}),
+          ...(typeof p2ObservabilityEnabled === 'boolean'
+            ? { p2ObservabilityEnabled }
+            : {}),
+          ...(p2SensitiveDataPolicyMode
+            ? { p2SensitiveDataPolicyMode }
+            : {}),
           ...(flags['response-language']
             ? { responseLanguage: flags['response-language'] }
             : {}),
@@ -310,6 +418,22 @@ function parseBooleanFlag(value: string | undefined): boolean | undefined {
   if (value === 'true') return true
   if (value === 'false') return false
   return true
+}
+
+function parseEvidenceMode(value: string | undefined): EvidenceVerificationMode | undefined {
+  if (!value) return undefined
+  if (value === 'lexical' || value === 'semantic' || value === 'hybrid') return value
+  throw new Error(
+    `Valor invalido para --p2-evidence-mode: ${value}. Use lexical, semantic ou hybrid.`
+  )
+}
+
+function parseSensitivePolicyMode(value: string | undefined): SensitiveDataPolicyMode | undefined {
+  if (!value) return undefined
+  if (value === 'off' || value === 'warn' || value === 'strict') return value
+  throw new Error(
+    `Valor invalido para --p2-sensitive-data-policy: ${value}. Use off, warn ou strict.`
+  )
 }
 
 main().catch((error) => {

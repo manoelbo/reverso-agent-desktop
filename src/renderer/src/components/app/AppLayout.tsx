@@ -153,8 +153,9 @@ export function AppLayout({
                 dossierIndexStale={dossierIndexStale}
                 selectedDossierDocument={selectedDossierDocument}
                 onOpenDossierDocument={(relativePath) => handleOpenDossierDocument(relativePath, "home")}
-                onCloseDossierDocument={() => setSelectedDossierDocument(null)}
                 onOpenDossierDocumentFromWikiLink={(relativePath) => handleOpenDossierDocument(relativePath, "wikilink")}
+                onNavigateDossierSection={handleSelectView}
+                onNavigateDossierFilter={handleSelectDossierFilter}
               />
             </SidebarInset>
             {isRightOpen ? <ChatPanel {...chatPanelProps} /> : null}

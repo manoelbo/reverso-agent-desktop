@@ -5,6 +5,7 @@ import os from 'node:os'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { runAgentLoop } from '../src/core/agent-loop.js'
 import { buildNoProgressRecommendation } from '../src/runner/run-inquiry.js'
+import { createPolicyComplianceHooks } from '../src/core/compliance-hooks.js'
 
 test('runAgentLoop encerra com goal_reached em acao valida', async () => {
   const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'agent-loop-'))
@@ -91,5 +92,30 @@ test('runAgentLoop emite telemetria de tool_result com retryCount', async () => 
   assert.equal(toolResults.length, 1)
   assert.equal(typeof toolResults[0]?.retryCount, 'number')
   assert.ok((toolResults[0]?.retryCount ?? 0) <= 1)
+  assert.equal(result.steps.length, 1)
+})
+
+test('runAgentLoop bloqueia por compliance deny com stop_reason auditavel', async () => {
+  const decisions: string[] = []
+  const result = await runAgentLoop({
+    actions: [
+      {
+        tool: 'linkEntities',
+        input: { filePath: '/tmp/nao-importa.md' }
+      }
+    ],
+    ctx: { paths: {} as never },
+    compliance: createPolicyComplianceHooks({
+      defaultDecision: 'allow',
+      byCapability: { persist: 'deny' }
+    }),
+    hooks: {
+      onComplianceDecision: ({ phase, decision }) => {
+        decisions.push(`${phase}:${decision}`)
+      }
+    }
+  })
+  assert.equal(result.stopReason, 'compliance_denied')
+  assert.ok(decisions.includes('pre:deny'))
   assert.equal(result.steps.length, 1)
 })

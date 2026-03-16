@@ -8,6 +8,8 @@ allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
 
 Automate any Electron desktop app using agent-browser. Electron apps are built on Chromium and expose a Chrome DevTools Protocol (CDP) port that agent-browser can connect to, enabling the same snapshot-interact workflow used for web pages.
 
+For routine UI validation, prefer inspection via snapshot/element checks (`get text`, state changes after click/fill) without screenshots. Use screenshots only when explicitly requested by the user or when a dedicated command requires image evidence (for example, `/test-ui-electron`).
+
 ## Core Workflow
 
 1. **Launch** the Electron app with remote debugging enabled
@@ -26,7 +28,7 @@ agent-browser connect 9222
 # Standard workflow from here
 agent-browser snapshot -i
 agent-browser click @e5
-agent-browser screenshot slack-desktop.png
+agent-browser get text @e5
 ```
 
 ## Launching Electron Apps with CDP

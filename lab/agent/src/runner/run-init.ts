@@ -1,10 +1,12 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { resolveRuntimeConfig } from '../config/env.js'
 import { ensureDir, loadRandomPreviewsWithinBudget, writeUtf8 } from '../core/fs-io.js'
 import { formatFrontmatter } from '../core/markdown.js'
 import { toRelative } from '../core/paths.js'
 import { OpenRouterClient } from '../llm/openrouter-client.js'
-import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { createFeedbackController, type FeedbackMode } from '../cli/renderer.js'
 import { buildInitSystemPrompt } from '../prompts/init.js'
 import {
   buildResponseLanguageInstruction,
@@ -17,10 +19,19 @@ export interface RunInitOptions {
   responseLanguage?: string
   artifactLanguage?: string
   feedbackMode?: FeedbackMode
-  feedback?: FeedbackController
+  feedback?: UiFeedbackController
 }
 
 const DEFAULT_MAX_TOKENS = 20_000
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.promises.access(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
 
 export async function runInit(options: RunInitOptions = {}): Promise<void> {
   const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS
@@ -40,8 +51,16 @@ export async function runInit(options: RunInitOptions = {}): Promise<void> {
       ...(options.feedbackMode ? { mode: options.feedbackMode } : {})
     }))
 
-  feedback.step('Iniciando agente Reverso...', 'in_progress')
-  feedback.step(`Lendo previews em ${runtime.paths.sourceArtifactsDir}`, 'in_progress', `max ${maxTokens} tokens`)
+  const agentPath = path.join(runtime.paths.outputDir, 'agent.md')
+  const isReInit = await fileExists(agentPath)
+
+  if (isReInit) {
+    feedback.stepStart('init-start', 'Atualizando contexto de investigação...')
+  } else {
+    feedback.stepStart('init-start', 'Iniciando agente Reverso...')
+  }
+  feedback.stepComplete('init-start')
+  feedback.stepStart('load-previews', `Lendo previews em ${runtime.paths.sourceArtifactsDir}`, `max ${maxTokens} tokens`)
   const result = await loadRandomPreviewsWithinBudget(
     runtime.paths.sourceArtifactsDir,
     runtime.paths.sourceDir,
@@ -54,12 +73,8 @@ export async function runInit(options: RunInitOptions = {}): Promise<void> {
     )
   }
 
-  feedback.step(
-    `${result.usedCount} previews carregados`,
-    'completed',
-    `${result.estimatedTokens} tokens estimados`
-  )
-  feedback.step('Gerando entendimento inicial da investigacao...', 'in_progress')
+  feedback.stepComplete('load-previews', `${result.usedCount} previews — ${result.estimatedTokens} tokens estimados`)
+  feedback.stepStart('gen-understanding', 'Gerando entendimento inicial da investigacao...')
   const userParts = result.previews.map(
     (p) => `## Documento: ${p.documentName}\n\n${p.content}`
   )
@@ -77,12 +92,11 @@ export async function runInit(options: RunInitOptions = {}): Promise<void> {
     user: userPrompt,
     temperature: 0.2,
     onChunk(delta) {
-      feedback.assistantDelta(delta)
+      feedback.textDelta(delta)
     }
   })
-  feedback.step('Entendimento inicial concluido', 'completed')
-
-  feedback.step('Salvando arquivo de configuracao do agente', 'in_progress')
+  feedback.stepComplete('gen-understanding', 'Entendimento inicial concluido')
+  feedback.stepStart('save-agent', isReInit ? 'Atualizando arquivo de contexto do agente' : 'Salvando arquivo de configuracao do agente')
   const previewList = result.previews.map((p) => `- ${p.documentName} (${p.docId})`).join('\n')
   const agentContent = [
     formatFrontmatter({
@@ -100,24 +114,44 @@ export async function runInit(options: RunInitOptions = {}): Promise<void> {
     ''
   ].join('\n')
 
-  const agentPath = path.join(runtime.paths.outputDir, 'agent.md')
   await writeUtf8(agentPath, agentContent)
 
   const relPath = toRelative(runtime.paths.projectRoot, agentPath)
-  feedback.fileChange({
+
+  // Emitir o arquivo como artifact para exibição na interface
+  feedback.artifact?.({
+    title: 'agent.md',
+    content: agentContent,
+    language: 'markdown',
     path: relPath,
-    changeType: 'new',
-    addedLines: agentContent.split('\n').length,
-    removedLines: 0,
-    preview: 'agent.md criado com contexto inicial e instrucoes.'
   })
-  feedback.step('Arquivo salvo com sucesso', 'completed', relPath)
-  feedback.info(`Log de eventos salvo em ${toRelative(runtime.paths.projectRoot, feedback.logPath)}`)
-  feedback.finalSummary('Proximos passos', [
-    `Previews usados: ${result.usedCount} (${result.estimatedTokens} tokens estimados).`,
-    'Ajuste instrucoes com: pnpm reverso agent-setup --text "Adicione que o foco da investigacao e..."',
-    'Depois, use o comando /deep-dive para encontrar linhas investigativas e sugerir leads.'
+
+  feedback.fileCreated(relPath, agentContent.split('\n').length, 'agent.md criado com contexto inicial e instrucoes.')
+  feedback.stepComplete('save-agent', relPath)
+
+  // Texto explicativo sobre o agent.md
+  const actionVerb = isReInit ? 'atualizado' : 'criado'
+  const explanatoryText = [
+    '',
+    `O **agent.md** foi ${actionVerb} com base em ${result.usedCount} documento(s) analisado(s).`,
+    'Ele serve como contexto de investigação: registra o entendimento inicial das fontes e orienta as próximas etapas.',
+    '',
+    'Para atualizar o contexto verbalmente, basta dizer algo como:',
+    '*"Estou investigando corrupção no ministério X"* ou *"Adicione que o foco é contratos superfaturados"*.',
+    '',
+    'Também é possível reinicializar a qualquer momento com o comando `/init`.',
+  ].join('\n')
+
+  const separator = feedback.getFullText().length > 0 ? '\n\n' : ''
+  feedback.textDelta(separator + explanatoryText)
+
+  // Sugestões dinâmicas de próximo passo
+  feedback.suggestions?.([
+    { id: 'deep-dive', text: 'Fazer deep-dive nas fontes' },
+    { id: 'explore-sources', text: 'Ver documentos disponíveis' },
+    { id: 'update-context', text: 'Adicionar mais contexto à investigação' },
   ])
+
   if (ownsFeedback) {
     await feedback.flush()
   }

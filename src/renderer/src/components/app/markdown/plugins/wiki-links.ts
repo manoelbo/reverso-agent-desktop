@@ -7,6 +7,9 @@ export type WikiLinkMeta = {
 }
 
 export type WikiLinkResolver = (value: string) => string
+export type WikiLinksPluginOptions = {
+  showIcon?: boolean
+}
 
 function defaultWikiLinkResolver(value: string): string {
   const slug = value
@@ -19,7 +22,11 @@ function defaultWikiLinkResolver(value: string): string {
   return `/wiki/${slug || "unknown"}`
 }
 
-export function wikiLinksPlugin(md: MarkdownIt, resolver: WikiLinkResolver = defaultWikiLinkResolver): void {
+export function wikiLinksPlugin(
+  md: MarkdownIt,
+  resolver: WikiLinkResolver = defaultWikiLinkResolver,
+  options: WikiLinksPluginOptions = {},
+): void {
   md.inline.ruler.before("emphasis", "wikilink", (state, silent) => {
     const start = state.pos
     const src = state.src
@@ -59,6 +66,7 @@ export function wikiLinksPlugin(md: MarkdownIt, resolver: WikiLinkResolver = def
     const meta = token.meta as WikiLinkMeta | undefined
     const value = meta?.value ?? token.content
     const href = meta?.href ?? defaultWikiLinkResolver(value)
-    return `<a href="${md.utils.escapeHtml(href)}" data-wikilink="${md.utils.escapeHtml(value)}" class="reverso-wikilink">[[${md.utils.escapeHtml(value)}]]</a>`
+    const icon = options.showIcon ? '<span class="reverso-wikilink-icon" aria-hidden="true">↗</span>' : ""
+    return `<a href="${md.utils.escapeHtml(href)}" data-wikilink="${md.utils.escapeHtml(value)}" class="reverso-wikilink"><span class="reverso-wikilink-label">${md.utils.escapeHtml(value)}</span>${icon}</a>`
   }
 }

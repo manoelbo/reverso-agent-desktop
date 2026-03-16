@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "sourceFile": "/Users/manebrasil/Developer/Capybara Agent/lab/agent/filesystem_test/source/2021_008.pdf",
+  "model": "google/gemini-2.5-flash",
+  "steps": {
+    "preview": "done",
+    "index": "pending",
+    "notes": "pending",
+    "persons": "pending",
+    "groups": "pending",
+    "places": "pending",
+    "events": "pending",
+    "postprocess": "pending"
+  },
+  "artifacts": {
+    "notes": [],
+    "personsCreated": [],
+    "personsUpdated": [],
+    "groupsCreated": [],
+    "groupsUpdated": [],
+    "placesCreated": [],
+    "placesUpdated": [],
+    "eventsPaths": []
+  },
+  "usage": {},
+  "startedAt": "2026-03-14T23:00:29.449Z",
+  "updatedAt": "2026-03-14T23:00:57.779Z"
+}

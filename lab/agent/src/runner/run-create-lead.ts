@@ -1,3 +1,6 @@
+import path from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { access } from 'node:fs/promises'
 import { resolveRuntimeConfig } from '../config/env.js'
 import {
   ensureDir,
@@ -7,7 +10,8 @@ import {
 } from '../core/fs-io.js'
 import { toRelative } from '../core/paths.js'
 import { createLeadFile } from '../tools/investigative/create-lead-file.js'
-import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { createFeedbackController, type FeedbackMode } from '../cli/renderer.js'
 import { OpenRouterClient } from '../llm/openrouter-client.js'
 import { stripCodeFence } from '../core/markdown.js'
 import {
@@ -40,7 +44,8 @@ export interface RunCreateLeadOptions {
   selfRepairEnabled?: boolean
   selfRepairMaxRounds?: number
   feedbackMode?: FeedbackMode
-  feedback?: FeedbackController
+  feedback?: UiFeedbackController
+  waitForApproval?: (requestId: string) => Promise<boolean>
 }
 
 interface ParsedCreateLead {
@@ -57,7 +62,7 @@ export interface CreateInquiryPlanOnlyInput {
   responseLanguage: LanguageCode
   selfRepairEnabled: boolean
   selfRepairMaxRounds: number
-  feedback: FeedbackController
+  feedback: UiFeedbackController
   client: OpenRouterClient
 }
 
@@ -128,14 +133,14 @@ export async function runCreateLead(options: RunCreateLeadOptions = {}): Promise
         }
   )
 
-  feedback.step(idea ? `Criando lead a partir da ideia: "${idea}"` : 'Gerando lead (ideia livre)...', 'in_progress')
+  feedback.stepStart('create-lead', idea ? `Criando lead a partir da ideia: "${idea}"` : 'Gerando lead (ideia livre)...')
 
   const client = new OpenRouterClient(runtime.apiKey)
   const sourceSummary = await buildSourceSummary(runtime.paths.sourceArtifactsDir, runtime.paths.sourceDir)
   if (sourceSummary) {
-    feedback.step('Contexto de source carregado para planejar o lead', 'completed')
+    feedback.systemInfo('Contexto de source carregado para planejar o lead')
   } else {
-    feedback.warn(
+    feedback.systemWarn(
       'Nenhum preview encontrado em filesystem/source/.artifacts (ou fallback legado); lead sera gerado sem contexto de source.'
     )
   }
@@ -153,7 +158,32 @@ export async function runCreateLead(options: RunCreateLeadOptions = {}): Promise
   const slug = normalizeLeadSlug(parsed.codename)
   const title = parsed.title
   const description = parsed.description
-  feedback.step('Salvando lead e planejamento de inquiry em filesystem/investigation/leads...', 'in_progress')
+
+  const leadFilePath = path.join(runtime.paths.leadsDir, `lead-${slug}.md`)
+  const leadAlreadyExists = await fileExists(leadFilePath)
+  if (leadAlreadyExists) {
+    const dupRequestId = randomUUID()
+    feedback.requestApproval(
+      dupRequestId,
+      'Lead similar já existe',
+      `O lead "${title}" (${slug}) já existe em investigation/leads. Deseja criar mesmo assim?`
+    )
+    if (options.waitForApproval) {
+      const approved = await options.waitForApproval(dupRequestId)
+      if (!approved) {
+        feedback.summary('Lead não criado', [
+          `Lead "${title}" não foi criado — já existe um lead similar (${slug}).`,
+          'Dica: investigue o lead existente ou refine a ideia antes de criar um novo.'
+        ])
+        if (ownsFeedback) {
+          await feedback.flush()
+        }
+        return
+      }
+    }
+  }
+
+  feedback.stepStart('save-lead', 'Salvando lead e planejamento de inquiry em filesystem/investigation/leads...')
 
   const output = await createLeadFile(
     {
@@ -168,16 +198,21 @@ export async function runCreateLead(options: RunCreateLeadOptions = {}): Promise
   )
 
   const relPath = toRelative(runtime.paths.projectRoot, output.leadPath)
-  feedback.fileChange({
-    path: relPath,
-    changeType: 'new',
-    addedLines: 0,
-    removedLines: 0,
-    preview: `Lead "${title}" criado com Inquiry Plan.`
-  })
-  feedback.step('Lead criado', 'completed', relPath)
+  feedback.fileCreated(relPath, 0, `Lead "${title}" criado com Inquiry Plan.`)
+  feedback.stepComplete('save-lead', relPath)
+  feedback.stepComplete('create-lead')
 
-  feedback.finalSummary('Lead criado', [
+  const inquiryPlanText = formatInquiryPlanAsText(parsed.inquiryPlan)
+  feedback.leadSuggestion?.({
+    leadId: slug,
+    slug,
+    title,
+    description,
+    inquiryPlan: inquiryPlanText,
+    status: 'planned'
+  })
+
+  feedback.summary('Lead criado', [
     `Lead: ${relPath}`,
     'Proximo passo: execute /inquiry para gerar allegations e findings conectados ao lead.'
   ])
@@ -215,7 +250,7 @@ async function createLeadPayloadFromIdea(input: {
   responseLanguage: LanguageCode
   selfRepairEnabled: boolean
   selfRepairMaxRounds: number
-  feedback: FeedbackController
+  feedback: UiFeedbackController
   client: OpenRouterClient
 }): Promise<ParsedCreateLead> {
   const userPrompt = buildCreateLeadUserPrompt(input.idea, input.sourceSummary)
@@ -241,7 +276,7 @@ async function requestCreateLeadPayload(input: {
   userPrompt: string
   selfRepairEnabled: boolean
   selfRepairMaxRounds: number
-  feedback: FeedbackController
+  feedback: UiFeedbackController
 }): Promise<ParsedCreateLead> {
   let raw = await input.client.chatText({
     model: input.model,
@@ -268,7 +303,7 @@ async function requestCreateLeadPayload(input: {
   }
 
   for (let round = 1; round <= input.selfRepairMaxRounds; round += 1) {
-    input.feedback.warn(`Create-lead JSON invalid. Running self-repair round ${round}...`)
+    input.feedback.systemWarn(`Create-lead JSON invalid. Running self-repair round ${round}...`)
     raw = await input.client.chatText({
       model: input.model,
       system: buildCritiqueRepairSystemPrompt(),
@@ -312,6 +347,40 @@ function normalizeInquiryPlan(input: CreateLeadIAResponse['inquiryPlan']): Inqui
       ? asStringList(input?.mapToAllegations).slice(0, 8)
       : fallback
   }
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function formatInquiryPlanAsText(inquiryPlan: InquiryPlan): string {
+  const sections: string[] = []
+  if (inquiryPlan.formulateAllegations.length > 0) {
+    sections.push(
+      'Formular alegações:\n' + inquiryPlan.formulateAllegations.map((s) => `- ${s}`).join('\n')
+    )
+  }
+  if (inquiryPlan.defineSearchStrategy.length > 0) {
+    sections.push(
+      'Estratégia de busca:\n' + inquiryPlan.defineSearchStrategy.map((s) => `- ${s}`).join('\n')
+    )
+  }
+  if (inquiryPlan.gatherFindings.length > 0) {
+    sections.push(
+      'Coletar findings:\n' + inquiryPlan.gatherFindings.map((s) => `- ${s}`).join('\n')
+    )
+  }
+  if (inquiryPlan.mapToAllegations.length > 0) {
+    sections.push(
+      'Mapear para alegações:\n' + inquiryPlan.mapToAllegations.map((s) => `- ${s}`).join('\n')
+    )
+  }
+  return sections.join('\n\n')
 }
 
 async function buildSourceSummary(

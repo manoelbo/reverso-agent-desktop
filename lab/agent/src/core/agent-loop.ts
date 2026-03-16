@@ -6,6 +6,7 @@ import {
   type ToolCall,
   type ToolResult
 } from './tool-registry.js'
+import type { ComplianceHooks, ComplianceDecisionResult } from './compliance-hooks.js'
 import {
   clampConfidence,
   createLoopBudget,
@@ -79,8 +80,16 @@ export async function runAgentLoop(args: {
       retryCount: number
       errorCode?: ToolResult['errorCode']
     }) => void
+    onComplianceDecision?: (input: {
+      phase: 'pre' | 'post'
+      step: number
+      tool: string
+      decision: ComplianceDecisionResult['decision']
+      reason: string
+    }) => void
     onStopped?: (input: { step: number; failures: number; stopReason: StopReason }) => void
   }
+  compliance?: ComplianceHooks
 }): Promise<AgentLoopRun> {
   const budget = createLoopBudget({
     ...(args.budget ?? {}),
@@ -122,6 +131,7 @@ export async function runAgentLoop(args: {
     }
     const inputSummary = JSON.stringify(action.input ?? {})
     const inputHash = createHash('sha1').update(inputSummary).digest('hex')
+    const definition = getToolDefinition(action.tool)
     const actionKey = `${action.tool}:${inputHash}`
     if (actionKey === lastActionKey) {
       repeatedActionCount += 1
@@ -139,6 +149,54 @@ export async function runAgentLoop(args: {
       tool: action.tool,
       inputSummary: summarizeJson(inputSummary)
     })
+
+    const preCompliance = args.compliance?.preToolUse
+      ? await args.compliance.preToolUse({
+          step: steps.length + 1,
+          action,
+          inputHash,
+          inputSummary,
+          ...(definition ? { definition } : {})
+        })
+      : undefined
+    if (preCompliance) {
+      args.hooks?.onComplianceDecision?.({
+        phase: 'pre',
+        step: steps.length + 1,
+        tool: action.tool,
+        decision: preCompliance.decision,
+        reason: preCompliance.reason
+      })
+    }
+    if (preCompliance?.decision === 'deny') {
+      const deniedResult: ToolResult = {
+        tool: action.tool,
+        ok: false,
+        error: `Tool bloqueada por compliance: ${preCompliance.reason}`,
+        errorCode: 'permission_denied'
+      }
+      steps.push({
+        step: steps.length + 1,
+        selectedTool: action.tool,
+        observation: `compliance_deny:${preCompliance.reason}`,
+        reflectedNextAction: 'interromper_loop',
+        result: deniedResult,
+        retryCount: 0,
+        durationMs: 0,
+        inputHash
+      })
+      args.hooks?.onToolResult?.({
+        step: steps.length,
+        tool: action.tool,
+        ok: false,
+        outputSummary: summarizeJson(deniedResult.error ?? 'compliance denied'),
+        durationMs: 0,
+        retryCount: 0,
+        errorCode: 'permission_denied'
+      })
+      stopReason = 'compliance_denied'
+      break
+    }
 
     const startedAtMs = Date.now()
     let attempts = 0
@@ -168,6 +226,29 @@ export async function runAgentLoop(args: {
       retryCount,
       ...(result.errorCode ? { errorCode: result.errorCode } : {})
     })
+
+    const postCompliance = args.compliance?.postToolUse
+      ? await args.compliance.postToolUse({
+          step: steps.length + 1,
+          action,
+          inputHash,
+          inputSummary,
+          result,
+          ...(definition ? { definition } : {})
+        })
+      : undefined
+    if (postCompliance) {
+      args.hooks?.onComplianceDecision?.({
+        phase: 'post',
+        step: steps.length + 1,
+        tool: action.tool,
+        decision: postCompliance.decision,
+        reason: postCompliance.reason
+      })
+      if (postCompliance.decision === 'deny') {
+        stopReason = 'compliance_denied'
+      }
+    }
 
     steps.push({
       step: steps.length + 1,
@@ -211,6 +292,9 @@ export async function runAgentLoop(args: {
     }
     if (!verification.ok && verification.reason === 'tool_error') {
       stopReason = 'tool_error'
+      break
+    }
+    if (stopReason === 'compliance_denied') {
       break
     }
 

@@ -5,11 +5,12 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { AiMagicIcon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 
 import type { ShellViewId } from "@/components/app/AppSidebar"
-import type { SelectedDossierDocument } from "@/components/app/dossier/types"
+import { buildDossierLookup, toDisplayDocumentName, type SelectedDossierDocument } from "@/components/app/dossier/types"
 import type { DossierViewFilter } from "@/components/app/sidebar/types"
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -25,6 +26,8 @@ import { TimelineViewPanel } from "@/components/app/viewer/TimelineViewPanel"
 import { DossierMarkdownDocumentPanel } from "@/components/app/viewer/DossierMarkdownDocumentPanel"
 import type { DossierIndexPayload } from "../../../../shared/workspace-markdown"
 
+type DossierViewId = Extract<ShellViewId, "dossier-people" | "dossier-groups" | "dossier-places" | "dossier-timeline">
+
 type ViewerPanelProps = {
   activeView: ShellViewId
   dossierFilter?: DossierViewFilter | null
@@ -36,7 +39,8 @@ type ViewerPanelProps = {
   selectedDossierDocument: SelectedDossierDocument | null
   onOpenDossierDocument: (relativePath: string) => void
   onOpenDossierDocumentFromWikiLink: (relativePath: string) => void
-  onCloseDossierDocument: () => void
+  onNavigateDossierSection: (view: DossierViewId) => void
+  onNavigateDossierFilter: (filter: DossierViewFilter) => void
 }
 
 type ViewMetadata = {
@@ -134,11 +138,74 @@ export function ViewerPanel({
   selectedDossierDocument,
   onOpenDossierDocument,
   onOpenDossierDocumentFromWikiLink,
-  onCloseDossierDocument,
+  onNavigateDossierSection,
+  onNavigateDossierFilter,
 }: ViewerPanelProps): JSX.Element {
   const content = viewContent[activeView]
   const isDossierView = activeView === "dossier-people" || activeView === "dossier-groups" || activeView === "dossier-places" || activeView === "dossier-timeline"
+  const isDocumentMode = isDossierView && Boolean(selectedDossierDocument)
   const showTopCommands = !isDossierView
+  const dossierLookup = buildDossierLookup(dossierIndex)
+  const selectedMeta = selectedDossierDocument ? dossierLookup.byRelativePath.get(selectedDossierDocument.relativePath) : undefined
+
+  const headerBreadcrumbs: Array<{ label: string; onClick?: () => void; current?: boolean }> = isDocumentMode && selectedMeta
+    ? (() => {
+        const sectionView = activeView as DossierViewId
+        const sectionLabel = sectionView === "dossier-people"
+          ? "People"
+          : sectionView === "dossier-groups"
+            ? "Groups"
+            : sectionView === "dossier-places"
+              ? "Places"
+              : "Timeline"
+        const crumbs: Array<{ label: string; onClick?: () => void; current?: boolean }> = [
+          { label: "Desk Title" },
+          { label: "Dossier", onClick: () => onNavigateDossierSection(sectionView) },
+          { label: sectionLabel, onClick: () => onNavigateDossierSection(sectionView) },
+        ]
+
+        if (sectionView === "dossier-places") {
+          const [, country, city, neighborhood] = selectedMeta.folderPath
+          if (country) {
+            crumbs.push({
+              label: country,
+              onClick: () => onNavigateDossierFilter({ view: "dossier-places", country }),
+            })
+          }
+          if (country && city) {
+            crumbs.push({
+              label: city,
+              onClick: () => onNavigateDossierFilter({ view: "dossier-places", country, city }),
+            })
+          }
+          if (country && city && neighborhood) {
+            crumbs.push({
+              label: neighborhood,
+              onClick: () => onNavigateDossierFilter({ view: "dossier-places", country, city, neighborhood }),
+            })
+          }
+        }
+
+        if (sectionView === "dossier-timeline") {
+          const [, year] = selectedMeta.folderPath
+          if (year) {
+            crumbs.push({
+              label: year,
+              onClick: () => onNavigateDossierFilter({ view: "dossier-timeline", year }),
+            })
+          }
+        }
+
+        crumbs.push({
+          label: toDisplayDocumentName(selectedMeta),
+          current: true,
+        })
+        return crumbs
+      })()
+    : content.breadcrumbs.map((label, index) => ({
+        label,
+        current: index === content.breadcrumbs.length - 1,
+      }))
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-background">
@@ -146,11 +213,21 @@ export function ViewerPanel({
         <div className="flex min-w-0 items-center gap-2">
           <Breadcrumb>
             <BreadcrumbList>
-              {content.breadcrumbs.map((crumb, index) => {
-                const isLast = index === content.breadcrumbs.length - 1
+              {headerBreadcrumbs.map((crumb, index) => {
+                const isLast = index === headerBreadcrumbs.length - 1
                 return (
-                  <BreadcrumbItem key={`${crumb}-${index}`} className="min-w-0">
-                    {isLast ? <BreadcrumbPage className="truncate">{crumb}</BreadcrumbPage> : <span>{crumb}</span>}
+                  <BreadcrumbItem key={`${crumb.label}-${index}`} className="min-w-0">
+                    {isLast || crumb.current ? (
+                      <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
+                    ) : crumb.onClick ? (
+                      <BreadcrumbLink asChild>
+                        <button type="button" onClick={crumb.onClick} className="truncate">
+                          {crumb.label}
+                        </button>
+                      </BreadcrumbLink>
+                    ) : (
+                      <span>{crumb.label}</span>
+                    )}
                     {!isLast ? <BreadcrumbSeparator /> : null}
                   </BreadcrumbItem>
                 )
@@ -183,118 +260,101 @@ export function ViewerPanel({
         ) : null}
       </header>
 
-      <ScrollArea className="flex-1">
-        {activeView === "sources" ? (
-          <SourceViewPanel />
-        ) : activeView === "dossier-people" ? (
+      {isDocumentMode ? (
+        <div className="flex min-h-0 flex-1">
           <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
             {selectedDossierDocument ? (
               <DossierMarkdownDocumentPanel
                 selectedDocument={selectedDossierDocument}
                 dossierIndex={dossierIndex}
-                onClose={onCloseDossierDocument}
+                section={selectedMeta?.section}
                 onOpenDocument={onOpenDossierDocumentFromWikiLink}
               />
             ) : null}
-            <PeopleViewPanel dossierIndex={dossierIndex} onOpenDossierDocument={onOpenDossierDocument} />
           </div>
-        ) : activeView === "dossier-groups" ? (
-          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
-            {selectedDossierDocument ? (
-              <DossierMarkdownDocumentPanel
-                selectedDocument={selectedDossierDocument}
+        </div>
+      ) : (
+        <ScrollArea className="flex-1">
+          {activeView === "sources" ? (
+            <SourceViewPanel />
+          ) : activeView === "dossier-people" ? (
+            <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+              <PeopleViewPanel dossierIndex={dossierIndex} onOpenDossierDocument={onOpenDossierDocument} />
+            </div>
+          ) : activeView === "dossier-groups" ? (
+            <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+              <GroupsViewPanel
                 dossierIndex={dossierIndex}
-                onClose={onCloseDossierDocument}
-                onOpenDocument={onOpenDossierDocumentFromWikiLink}
+                onOpenDossierDocument={onOpenDossierDocument}
+                presetCategory={dossierFilter?.view === "dossier-groups" ? dossierFilter.category : undefined}
+                presetVersion={dossierFilterVersion}
               />
-            ) : null}
-            <GroupsViewPanel
-              dossierIndex={dossierIndex}
-              onOpenDossierDocument={onOpenDossierDocument}
-              presetCategory={dossierFilter?.view === "dossier-groups" ? dossierFilter.category : undefined}
-              presetVersion={dossierFilterVersion}
-            />
-          </div>
-        ) : activeView === "dossier-places" ? (
-          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
-            {selectedDossierDocument ? (
-              <DossierMarkdownDocumentPanel
-                selectedDocument={selectedDossierDocument}
+            </div>
+          ) : activeView === "dossier-places" ? (
+            <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+              <PlacesViewPanel
                 dossierIndex={dossierIndex}
-                onClose={onCloseDossierDocument}
-                onOpenDocument={onOpenDossierDocumentFromWikiLink}
+                onOpenDossierDocument={onOpenDossierDocument}
+                preset={
+                  dossierFilter?.view === "dossier-places"
+                    ? {
+                        country: dossierFilter.country,
+                        city: dossierFilter.city,
+                        neighborhood: dossierFilter.neighborhood,
+                      }
+                    : null
+                }
+                presetVersion={dossierFilterVersion}
               />
-            ) : null}
-            <PlacesViewPanel
-              dossierIndex={dossierIndex}
-              onOpenDossierDocument={onOpenDossierDocument}
-              preset={
-                dossierFilter?.view === "dossier-places"
-                  ? {
-                      country: dossierFilter.country,
-                      city: dossierFilter.city,
-                      neighborhood: dossierFilter.neighborhood,
-                    }
-                  : null
-              }
-              presetVersion={dossierFilterVersion}
-            />
-          </div>
-        ) : activeView === "dossier-timeline" ? (
-          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
-            {selectedDossierDocument ? (
-              <DossierMarkdownDocumentPanel
-                selectedDocument={selectedDossierDocument}
+            </div>
+          ) : activeView === "dossier-timeline" ? (
+            <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+              <TimelineViewPanel
                 dossierIndex={dossierIndex}
-                onClose={onCloseDossierDocument}
-                onOpenDocument={onOpenDossierDocumentFromWikiLink}
+                onOpenDossierDocument={onOpenDossierDocument}
+                preset={
+                  dossierFilter?.view === "dossier-timeline"
+                    ? {
+                        year: dossierFilter.year,
+                        month: dossierFilter.month,
+                      }
+                    : null
+                }
+                presetVersion={dossierFilterVersion}
               />
-            ) : null}
-            <TimelineViewPanel
-              dossierIndex={dossierIndex}
-              onOpenDossierDocument={onOpenDossierDocument}
-              preset={
-                dossierFilter?.view === "dossier-timeline"
-                  ? {
-                      year: dossierFilter.year,
-                      month: dossierFilter.month,
-                    }
-                  : null
-              }
-              presetVersion={dossierFilterVersion}
-            />
-          </div>
-        ) : (
-          <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6 px-6 py-8">
-            <section className="space-y-3 rounded-xl border border-border/60 bg-card/70 p-6 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                Viewer Area
-              </p>
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold tracking-tight text-foreground">{content.title}</h1>
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{content.description}</p>
-              </div>
-            </section>
+            </div>
+          ) : (
+            <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6 px-6 py-8">
+              <section className="space-y-3 rounded-xl border border-border/60 bg-card/70 p-6 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                  Viewer Area
+                </p>
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-semibold tracking-tight text-foreground">{content.title}</h1>
+                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{content.description}</p>
+                </div>
+              </section>
 
-            <section className="grid auto-rows-min gap-4 md:grid-cols-3">
-              <div className="aspect-video rounded-xl bg-muted/50" />
-              <div className="aspect-video rounded-xl bg-muted/50" />
-              <div className="aspect-video rounded-xl bg-muted/50" />
-            </section>
+              <section className="grid auto-rows-min gap-4 md:grid-cols-3">
+                <div className="aspect-video rounded-xl bg-muted/50" />
+                <div className="aspect-video rounded-xl bg-muted/50" />
+                <div className="aspect-video rounded-xl bg-muted/50" />
+              </section>
 
-            <section className="rounded-xl border border-dashed border-border/70 bg-card/40 p-5">
-              <h2 className="text-sm font-medium text-foreground">Workspace Surface</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Reader base para todas as view areas. O conteudo de cada pagina sera renderizado aqui mantendo o
-                mesmo padrao de navegacao e comandos.
-              </p>
-              <div className="mt-4 min-h-[55vh] rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">
-                Conteudo dinamico: {content.title}
-              </div>
-            </section>
-          </div>
-        )}
-      </ScrollArea>
+              <section className="rounded-xl border border-dashed border-border/70 bg-card/40 p-5">
+                <h2 className="text-sm font-medium text-foreground">Workspace Surface</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Reader base para todas as view areas. O conteudo de cada pagina sera renderizado aqui mantendo o
+                  mesmo padrao de navegacao e comandos.
+                </p>
+                <div className="mt-4 min-h-[55vh] rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">
+                  Conteudo dinamico: {content.title}
+                </div>
+              </section>
+            </div>
+          )}
+        </ScrollArea>
+      )}
       {isDossierView && (dossierIndexLoading || dossierIndexError || dossierIndexStale) ? (
         <footer className="flex shrink-0 items-center gap-2 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
           {dossierIndexLoading ? <span>Carregando indice do dossier...</span> : null}

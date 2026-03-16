@@ -42,12 +42,12 @@ async function runLegacy(argv: string[]): Promise<void> {
       model: config.model,
           artifactLanguage: config.artifactLanguage ?? 'source',
       resume: config.resume,
-      onStepStart: (step) => feedback.step(`[${step}]`, 'in_progress', 'iniciando'),
-      onStepDone: (step) => feedback.step(`[${step}]`, 'completed', 'concluído'),
-      onStepError: (step, err) => feedback.step(`[${step}]`, 'blocked', err.message),
-      onInfo: (message) => feedback.info(message)
+      onStepStart: (step) => feedback.stepStart(step, `[${step}]`, 'iniciando'),
+      onStepDone: (step) => feedback.stepComplete(step, 'concluído'),
+      onStepError: (step, err) => feedback.stepError(step, err.message),
+      onInfo: (message) => feedback.systemInfo(message)
     })
-    feedback.finalSummary('Standard Process concluído', [
+    feedback.summary('Standard Process concluído', [
       `Arquivo: ${config.inputPdfPath}`,
       `Usage: ${JSON.stringify(result.usage)}`
     ])

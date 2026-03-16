@@ -1,5 +1,5 @@
 ---
-description: Testar fluxo visual no app Electron com snapshot, screenshots e relatório de erros
+description: Testar fluxo visual no app Electron com snapshot, screenshots (caso específico) e relatório de erros
 argument-hint: [fluxo-ou-objetivo]
 ---
 
@@ -8,6 +8,8 @@ argument-hint: [fluxo-ou-objetivo]
 ## Objetivo
 
 Executar um teste visual/interativo no app Electron para reproduzir problemas de interface, capturar evidências (snapshot + screenshot) e reportar erros com contexto técnico.
+
+Este comando é o fluxo **específico com imagens**. No fluxo diário do `/execute-plan`, a validação visual padrão deve ser feita por inspeção de elementos/snapshot, sem screenshot.
 
 ## Pré-requisito obrigatório: app com CDP ativo
 

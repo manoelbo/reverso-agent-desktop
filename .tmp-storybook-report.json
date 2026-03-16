@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-03-13T17:10:40.865Z",
+  "results": [
+    {
+      "story": "Variant 1 — Editorial Longform",
+      "renderOk": true,
+      "hasCorpusSelector": true,
+      "hasMarkdownContent": true,
+      "screenshotPath": "/Users/manebrasil/Developer/Capybara Agent/storybook-variant-1.png"
+    },
+    {
+      "story": "Variant 2 — Editorial Dossier Card",
+      "renderOk": true,
+      "hasCorpusSelector": true,
+      "hasMarkdownContent": true,
+      "screenshotPath": "/Users/manebrasil/Developer/Capybara Agent/storybook-variant-2.png"
+    },
+    {
+      "story": "Variant 3 — Evidence Workbench",
+      "renderOk": true,
+      "hasCorpusSelector": true,
+      "hasMarkdownContent": true,
+      "screenshotPath": "/Users/manebrasil/Developer/Capybara Agent/storybook-variant-3.png"
+    },
+    {
+      "story": "Variant 4 — Evidence Timeline Rail",
+      "renderOk": true,
+      "hasCorpusSelector": true,
+      "hasMarkdownContent": true,
+      "screenshotPath": "/Users/manebrasil/Developer/Capybara Agent/storybook-variant-4.png"
+    },
+    {
+      "story": "Variant 5 — Experimental Split Focus",
+      "renderOk": true,
+      "hasCorpusSelector": true,
+      "hasMarkdownContent": true,
+      "screenshotPath": "/Users/manebrasil/Developer/Capybara Agent/storybook-variant-5.png"
+    }
+  ]
+}

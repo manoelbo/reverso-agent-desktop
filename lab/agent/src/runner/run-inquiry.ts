@@ -1,7 +1,9 @@
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { resolveRuntimeConfig } from '../config/env.js'
-import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { createFeedbackController, type FeedbackMode } from '../cli/renderer.js'
 import { limitText, loadPreviewsIncremental, slugify, writeUtf8 } from '../core/fs-io.js'
 import { stripCodeFence } from '../core/markdown.js'
 import { toRelative } from '../core/paths.js'
@@ -31,6 +33,10 @@ import {
   type StopReason
 } from '../core/orchestration.js'
 import {
+  createPolicyComplianceHooks,
+  type ComplianceDecision
+} from '../core/compliance-hooks.js'
+import {
   getToolDefinitions,
   getToolDefinition,
   validateToolCallInput,
@@ -47,11 +53,32 @@ import {
   validateInquiryPlanPayload
 } from '../core/json-contract.js'
 import {
+  buildDefaultDomainPlans,
+  runDomainSubagents,
+  type DomainSubagentPlan,
+  type DomainSubagentResult
+} from '../core/domain-subagents.js'
+import {
   buildCritiqueRepairSystemPrompt,
   buildCritiqueRepairUserPrompt
 } from '../prompts/critique-repair.js'
-import { keepVerifiedEvidence, verifyEvidenceItem } from '../core/evidence-verifier.js'
+import { keepVerifiedEvidence } from '../core/evidence-verifier.js'
+import { verifyFindingEvidenceWithMode, type EvidenceVerificationMode } from '../core/evidence-semantic-verifier.js'
 import { validateInquiryPreWrite } from '../core/pre-write-validation.js'
+import {
+  getInvestigationCheckpointPath,
+  restoreInvestigationCheckpoint,
+  saveInvestigationCheckpoint
+} from '../core/investigation-checkpoint.js'
+import { createDefaultEditorialGovernance } from '../core/editorial-governance.js'
+import { sanitizeForLlm, type SensitiveDataPolicyMode } from '../core/sensitive-data-policy.js'
+import {
+  beginInquiryStage,
+  createInquiryRunMetrics,
+  endInquiryStage,
+  finalizeInquiryMetrics,
+  writeInquiryMetricsArtifact
+} from '../core/inquiry-observability.js'
 
 export interface RunInquiryOptions {
   lead: string
@@ -68,12 +95,21 @@ export interface RunInquiryOptions {
   preWriteValidationStrict?: boolean
   criticalWriteGateEnabled?: boolean
   requireExplicitWriteApproval?: boolean
+  p1ComplianceHooksEnabled?: boolean
+  p1DomainSubagentsEnabled?: boolean
+  p1CheckpointEnabled?: boolean
+  p1CheckpointRestore?: boolean
+  editorialGovernanceEnabled?: boolean
+  editorialGovernanceStrict?: boolean
+  p2EvidenceVerificationMode?: EvidenceVerificationMode
+  p2ObservabilityEnabled?: boolean
+  p2SensitiveDataPolicyMode?: SensitiveDataPolicyMode
   maxSteps?: number
   maxToolCalls?: number
   maxElapsedMs?: number
   confidenceThreshold?: number
   feedbackMode?: FeedbackMode
-  feedback?: FeedbackController
+  feedback?: UiFeedbackController
 }
 
 interface ParsedInquiry {
@@ -162,6 +198,33 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
       : {}),
     ...(typeof options.requireExplicitWriteApproval === 'boolean'
       ? { requireExplicitWriteApproval: options.requireExplicitWriteApproval }
+      : {}),
+    ...(typeof options.p1ComplianceHooksEnabled === 'boolean'
+      ? { p1ComplianceHooksEnabled: options.p1ComplianceHooksEnabled }
+      : {}),
+    ...(typeof options.p1DomainSubagentsEnabled === 'boolean'
+      ? { p1DomainSubagentsEnabled: options.p1DomainSubagentsEnabled }
+      : {}),
+    ...(typeof options.p1CheckpointEnabled === 'boolean'
+      ? { p1CheckpointEnabled: options.p1CheckpointEnabled }
+      : {}),
+    ...(typeof options.p1CheckpointRestore === 'boolean'
+      ? { p1CheckpointRestore: options.p1CheckpointRestore }
+      : {}),
+    ...(typeof options.editorialGovernanceEnabled === 'boolean'
+      ? { editorialGovernanceEnabled: options.editorialGovernanceEnabled }
+      : {}),
+    ...(typeof options.editorialGovernanceStrict === 'boolean'
+      ? { editorialGovernanceStrict: options.editorialGovernanceStrict }
+      : {}),
+    ...(options.p2EvidenceVerificationMode
+      ? { p2EvidenceVerificationMode: options.p2EvidenceVerificationMode }
+      : {}),
+    ...(typeof options.p2ObservabilityEnabled === 'boolean'
+      ? { p2ObservabilityEnabled: options.p2ObservabilityEnabled }
+      : {}),
+    ...(options.p2SensitiveDataPolicyMode
+      ? { p2SensitiveDataPolicyMode: options.p2SensitiveDataPolicyMode }
       : {})
   })
   const ownsFeedback = !options.feedback
@@ -174,9 +237,20 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
     }))
 
   const slug = normalizeLeadInput(leadInput)
+  const observabilityRunId = `${slug}-${Date.now().toString(36)}`
+  const metrics = createInquiryRunMetrics({
+    runId: observabilityRunId,
+    leadSlug: slug,
+    evidenceVerificationMode: runtime.p2EvidenceVerificationMode,
+    sensitiveDataMode: runtime.p2SensitiveDataPolicyMode,
+    evidenceGateEnabled: runtime.evidenceGateEnabled,
+    preWriteValidationEnabled: runtime.preWriteValidationEnabled
+  })
+  let sensitiveOccurrences = 0
+  let sensitiveBlocked = false
   const leadPath = path.join(runtime.paths.leadsDir, `lead-${slug}.md`)
 
-  feedback.step(`Iniciando inquiry para lead: ${slug}`, 'in_progress')
+  feedback.stepStart('inquiry-init', `Iniciando inquiry para lead: ${slug}`)
   let leadMarkdown = ''
   try {
     leadMarkdown = await readFile(leadPath, 'utf8')
@@ -196,21 +270,50 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
   let executionContext = 'Execution mode: legacy (single-pass).'
   let orchestrationStopReason: StopReason | undefined
   let repairedPlan: StructuredExecutionPlan | undefined
+  const complianceEvents: string[] = []
+  const restoredCheckpoint =
+    runtime.p1CheckpointEnabled && runtime.p1CheckpointRestore
+      ? await restoreInvestigationCheckpoint(runtime.paths.investigationDir, slug)
+      : undefined
+  if (restoredCheckpoint) {
+    feedback.systemInfo(`Checkpoint restaurado: stage=${restoredCheckpoint.stage}`)
+  }
   if (runtime.enablePev) {
-    feedback.step('Generating inquiry execution plan (plan -> execute -> verify)...', 'in_progress')
-    const plan = await createInquiryExecutionPlan({
-      client,
-      model: runtime.model,
-      responseLanguage,
-      leadSlug: slug,
-      leadMarkdown: limitText(leadMarkdown, 10_000),
-      sourceSummary,
-      selfRepairEnabled: runtime.selfRepairEnabled,
-      selfRepairMaxRounds: runtime.selfRepairMaxRounds,
-      enrichedToolManifestEnabled: runtime.enrichedToolManifestEnabled,
-      feedback
-    })
-    repairedPlan = prevalidateAndRepairExecutionPlan(plan, runtime.paths.filesystemDir, feedback)
+    beginInquiryStage(metrics, 'plan')
+    feedback.stepStart('pev-plan', 'Generating inquiry execution plan (plan -> execute -> verify)...')
+    if (restoredCheckpoint?.repairedPlan) {
+      repairedPlan = restoredCheckpoint.repairedPlan
+      feedback.systemInfo('Usando plano restaurado do checkpoint.')
+    } else {
+      const planningLeadSanitized = sanitizeForLlm({
+        text: limitText(leadMarkdown, 10_000),
+        mode: runtime.p2SensitiveDataPolicyMode
+      })
+      const planningSummarySanitized = sanitizeForLlm({
+        text: sourceSummary,
+        mode: runtime.p2SensitiveDataPolicyMode
+      })
+      sensitiveOccurrences +=
+        planningLeadSanitized.matches.length + planningSummarySanitized.matches.length
+      if (planningLeadSanitized.blocked || planningSummarySanitized.blocked) {
+        sensitiveBlocked = true
+        throw new Error('Sensitive data policy (strict) bloqueou etapa de planejamento da inquiry.')
+      }
+      const plan = await createInquiryExecutionPlan({
+        client,
+        model: runtime.model,
+        responseLanguage,
+        leadSlug: slug,
+        leadMarkdown: planningLeadSanitized.sanitizedText,
+        sourceSummary: planningSummarySanitized.sanitizedText,
+        selfRepairEnabled: runtime.selfRepairEnabled,
+        selfRepairMaxRounds: runtime.selfRepairMaxRounds,
+        enrichedToolManifestEnabled: runtime.enrichedToolManifestEnabled,
+        feedback
+      })
+      repairedPlan = prevalidateAndRepairExecutionPlan(plan, runtime.paths.filesystemDir, feedback)
+    }
+    endInquiryStage(metrics, 'plan', { outcome: 'ok' })
     if (runtime.strictPlanningValidation) {
       const requireFinalPersist = repairedPlan.actions.some((action) => action.capability === 'persist')
       const validation = validatePlannedToolActions(repairedPlan.actions, {
@@ -221,6 +324,13 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
         throw new Error(`Inquiry planning validation failed: ${validation.error}`)
       }
     }
+    if (runtime.p1CheckpointEnabled && repairedPlan) {
+      await saveInvestigationCheckpoint(runtime.paths.investigationDir, {
+        leadSlug: slug,
+        stage: 'planning',
+        repairedPlan
+      })
+    }
 
     const loopBudget = createLoopBudget({
       maxSteps: runtime.loopMaxSteps,
@@ -228,11 +338,39 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
       maxElapsedMs: runtime.loopMaxElapsedMs
     })
     const threshold = runtime.confidenceThreshold
-    feedback.info(
+    feedback.systemInfo(
       `PEV enabled: steps<=${loopBudget.maxSteps}, tools<=${loopBudget.maxToolCalls}, timeout=${loopBudget.maxElapsedMs}ms, threshold=${threshold}`
     )
-    feedback.step('Executing planned tool actions...', 'in_progress')
+    let subagentContext = ''
+    if (runtime.p1DomainSubagentsEnabled && repairedPlan) {
+      const subagentPlans = buildDefaultDomainPlans(repairedPlan, sourceSummary)
+      const subagentRun = await runDomainSubagents({
+        plans: subagentPlans,
+        executor: (plan) => executeDefaultDomainSubagent(plan),
+        maxDomains: 3,
+        timeoutMs: 2_000
+      })
+      subagentContext = renderDomainSubagentContext(subagentRun.outputs)
+      if (subagentRun.warnings.length > 0) {
+        for (const warning of subagentRun.warnings) {
+          feedback.systemWarn(`[subagent] ${warning}`)
+        }
+      }
+      feedback.systemInfo(
+        `Subagentes executados: ${subagentRun.outputs.length}, evidencias unicas=${subagentRun.consolidatedEvidence.length}`
+      )
+    }
 
+    const compliancePolicy = createCompliancePolicy('warn')
+
+    feedback.planStart('pev-exec', 'Tool execution plan', repairedPlan.actions.map((a, i) => ({
+      id: `action-${i}`,
+      title: `${a.tool} (${a.capability})`
+    })))
+    feedback.stepStart('pev-execute', 'Executing planned tool actions...')
+
+    let toolCallCounter = 0
+    beginInquiryStage(metrics, 'execute')
     const loopRun = await runAgentLoop({
       actions: toToolCalls(repairedPlan.actions),
       ctx: { paths: runtime.paths },
@@ -258,42 +396,85 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
       },
       hooks: {
         onToolCall: ({ tool, inputSummary }) => {
-          feedback.toolCall({ tool, inputSummary })
+          const toolId = `tool-${toolCallCounter++}`
+          feedback.toolStart(toolId, tool, inputSummary)
         },
-        onToolResult: ({ tool, ok, outputSummary, durationMs, retryCount, errorCode }) => {
-          feedback.toolResult({
-            tool,
-            status: ok ? 'success' : 'error',
-            outputSummary,
-            durationMs,
-            retryCount,
-            ...(errorCode ? { errorCode } : {})
-          })
+        onToolResult: ({ tool, ok, outputSummary, durationMs }) => {
+          const toolId = `tool-${toolCallCounter - 1}`
+          if (ok) {
+            feedback.toolSuccess(toolId, outputSummary, durationMs)
+          } else {
+            feedback.toolError(toolId, outputSummary ?? 'Tool error')
+          }
+          if (repairedPlan) {
+            feedback.planStepUpdate('pev-exec', `action-${Math.min(toolCallCounter - 1, repairedPlan.actions.length - 1)}`, ok ? 'done' : 'error')
+          }
+        },
+        onComplianceDecision: ({ phase, tool, decision, reason }) => {
+          complianceEvents.push(`${phase}:${tool}:${decision}:${reason}`)
+          if (decision === 'warn') {
+            feedback.systemWarn(`[compliance/${phase}] ${tool}: ${reason}`)
+          }
+          if (decision === 'deny') {
+            feedback.systemWarn(`[compliance/${phase}] ${tool}: blocked (${reason})`)
+          }
         },
         onBudgetUpdated: ({ step, usage, budget }) => {
-          feedback.loopBudgetUpdated({ step, usage, budget })
+          feedback.loopProgress(step, usage, budget)
         },
         onVerificationResult: ({ step, ok, confidence, reason, gaps }) => {
-          feedback.loopVerificationResult({ step, ok, confidence, reason, gaps })
+          feedback.loopVerification(step, ok, confidence, reason, gaps)
         },
         onStopped: ({ step, failures, stopReason }) => {
-          feedback.loopStopped({ step, failures, stopReason })
+          feedback.loopStopped(step, failures, stopReason)
+          if (stopReason === 'no_progress') {
+            feedback.requestApproval(
+              randomUUID().slice(0, 8),
+              'Loop detectado',
+              'O agente está repetindo a mesma busca. Isso pode indicar que as fontes não contêm a informação procurada. A inquiry continuará tentando consolidar o que foi encontrado até aqui.'
+            )
+          }
         }
-      }
+      },
+      ...(runtime.p1ComplianceHooksEnabled
+        ? {
+            compliance: createPolicyComplianceHooks(compliancePolicy)
+          }
+        : {})
     })
     orchestrationStopReason = loopRun.stopReason
+    endInquiryStage(metrics, 'execute', {
+      outcome: loopRun.stopReason === 'goal_reached' ? 'ok' : 'skipped',
+      details: `stop_reason=${loopRun.stopReason}`
+    })
     const loopSummary = summarizeLoop(repairedPlan, loopRun)
     executionContext = [
       'Execution mode: plan -> execute -> verify.',
       `Planner objective: ${repairedPlan.objective}`,
       `Planner success criteria: ${repairedPlan.successCriteria.join(' | ') || '(none)'}`,
       `Planner stop criteria: ${repairedPlan.stopCriteria.join(' | ') || '(none)'}`,
+      ...(subagentContext ? [subagentContext] : []),
+      ...(complianceEvents.length > 0 ? [`Compliance events: ${complianceEvents.join(' | ')}`] : []),
       loopSummary
     ].join('\n')
-    feedback.step(
-      `PEV tool execution finished with stop_reason=${loopRun.stopReason}`,
-      loopRun.stopReason === 'goal_reached' ? 'completed' : 'blocked'
-    )
+    if (loopRun.stopReason === 'goal_reached') {
+      feedback.stepComplete('pev-execute', `PEV tool execution finished with stop_reason=${loopRun.stopReason}`)
+    } else {
+      feedback.stepError('pev-execute', `PEV tool execution finished with stop_reason=${loopRun.stopReason}`)
+    }
+    if (runtime.p1CheckpointEnabled) {
+      await saveInvestigationCheckpoint(runtime.paths.investigationDir, {
+        leadSlug: slug,
+        stage: 'post_tools',
+        ...(repairedPlan ? { repairedPlan } : {}),
+        loopProgress: {
+          stopReason: loopRun.stopReason,
+          steps: loopRun.usage.steps,
+          toolCalls: loopRun.usage.toolCalls,
+          confidence: loopRun.confidence
+        }
+      })
+    }
   }
 
   const finalUserPrompt = buildInquiryUserPrompt({
@@ -302,65 +483,86 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
     sourceSummary,
     executionContext
   })
+  const sanitizedPrompt = sanitizeForLlm({
+    text: finalUserPrompt,
+    mode: runtime.p2SensitiveDataPolicyMode
+  })
+  sensitiveOccurrences += sanitizedPrompt.matches.length
+  if (sanitizedPrompt.matches.length > 0 && runtime.p2SensitiveDataPolicyMode !== 'off') {
+    feedback.systemWarn(
+      `[sensitive-data] ${sanitizedPrompt.matches.length} ocorrência(s) detectada(s) em prompt de inquiry (${runtime.p2SensitiveDataPolicyMode}).`
+    )
+  }
+  if (sanitizedPrompt.blocked) {
+    sensitiveBlocked = true
+    throw new Error('Sensitive data policy (strict) bloqueou envio do prompt ao LLM.')
+  }
 
-  feedback.step('Executando inquiry com LLM...', 'in_progress')
+  beginInquiryStage(metrics, 'verify')
+  feedback.stepStart('inquiry-llm', 'Executando inquiry com LLM...')
   const contract = await requestStrictInquiryPayload({
     client,
     model: runtime.model,
     systemPrompt: buildInquirySystemPrompt(buildResponseLanguageInstruction(responseLanguage)),
-    userPrompt: finalUserPrompt,
+    userPrompt: sanitizedPrompt.sanitizedText,
     selfRepairEnabled: runtime.selfRepairEnabled,
     selfRepairMaxRounds: runtime.selfRepairMaxRounds,
     feedback
   })
   const parsed = contract.parsed
   if (parsed.confidence < runtime.confidenceThreshold) {
-    feedback.warn(
+    feedback.systemWarn(
       `Inquiry confidence (${parsed.confidence.toFixed(2)}) below threshold (${runtime.confidenceThreshold.toFixed(2)}).`
     )
   }
-  feedback.step(`Cenario identificado: ${parsed.scenario}`, 'completed')
+  feedback.stepComplete('inquiry-llm', `Cenario identificado: ${parsed.scenario}`)
 
   let findingsToPersist = parsed.findings
   let reviewQueue: ParsedInquiry['findings'] = []
   if (runtime.evidenceGateEnabled) {
-    feedback.step(
-      `Applying evidence gate (minConfidence=${runtime.evidenceMinConfidence.toFixed(2)})...`,
-      'in_progress'
-    )
+    feedback.stepStart('evidence-gate', `Applying evidence gate (minConfidence=${runtime.evidenceMinConfidence.toFixed(2)})...`)
     const verificationResult = await verifyFindingsWithGate(
       parsed.findings,
       runtime.paths,
-      runtime.evidenceMinConfidence
+      runtime.evidenceMinConfidence,
+      runtime.p2EvidenceVerificationMode
     )
     findingsToPersist = verificationResult.verified
     reviewQueue = verificationResult.reviewQueue
-    feedback.info(
-      `Evidence gate summary: persisted=${findingsToPersist.length}, review_queue=${reviewQueue.length}`
-    )
+    feedback.stepComplete('evidence-gate', `persisted=${findingsToPersist.length}, review_queue=${reviewQueue.length}`)
   }
 
   if (runtime.preWriteValidationEnabled) {
-    feedback.step('Running pre-write validation (schema + refs + language)...', 'in_progress')
+    feedback.stepStart('pre-write', 'Running pre-write validation (schema + refs + language)...')
+    const governanceTargets = runtime.editorialGovernanceMode !== 'off'
+      ? buildInquiryGovernanceTargets({
+          slug,
+          allegations: parsed.allegations,
+          findings: findingsToPersist,
+          reviewQueue
+        })
+      : []
     const preWrite = await validateInquiryPreWrite({
       slug,
       allegations: parsed.allegations,
       findings: findingsToPersist,
       reviewQueue,
       expectedLanguage: responseLanguage,
+      editorialGovernanceTargets: governanceTargets,
+      editorialGovernanceMode: runtime.editorialGovernanceMode,
       paths: runtime.paths
     })
     for (const warning of preWrite.warnings) {
-      feedback.warn(`[pre-write] ${warning}`)
+      feedback.systemWarn(`[pre-write] ${warning}`)
     }
     if (!preWrite.ok) {
       const details = preWrite.errors.join(' | ')
       if (runtime.preWriteValidationStrict) {
         throw new Error(`Pre-write validation failed: ${details}`)
       }
-      feedback.warn(`Pre-write validation failed (non-strict): ${details}`)
+      feedback.systemWarn(`Pre-write validation failed (non-strict): ${details}`)
     } else {
-      feedback.step('Pre-write validation passed', 'completed')
+      feedback.stepComplete('pre-write', 'Pre-write validation passed')
     }
   }
 
@@ -370,28 +572,73 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
     hasPersistActionPlanned: Boolean(repairedPlan?.actions.some((action) => action.capability === 'persist')),
     ...(orchestrationStopReason ? { orchestrationStopReason } : {})
   })
+  endInquiryStage(metrics, 'verify', { outcome: 'ok' })
+  beginInquiryStage(metrics, 'persist')
+  if (runtime.p1CheckpointEnabled) {
+    await saveInvestigationCheckpoint(runtime.paths.investigationDir, {
+      leadSlug: slug,
+      stage: 'pre_persist',
+      ...(repairedPlan ? { repairedPlan } : {}),
+      ...(orchestrationStopReason
+        ? {
+            loopProgress: {
+              stopReason: orchestrationStopReason,
+              steps: 0,
+              toolCalls: 0,
+              confidence: parsed.confidence
+            }
+          }
+        : {}),
+      gate,
+      reviewQueueIds: reviewQueue.map((item) => item.id),
+      repairState: {
+        needsRepair: contract.needsRepair,
+        reasons: contract.repairReasons
+      }
+    })
+  }
   if (!gate.approved) {
-    feedback.warn(`Critical write gate bloqueou persistencia: ${gate.reason}`)
+    feedback.systemWarn(`Critical write gate bloqueou persistencia: ${gate.reason}`)
     const diagnosticPath = await writeInquiryDiagnosticArtifact({
       paths: runtime.paths,
       slug,
       gate,
       contract
     })
-    feedback.fileChange({
-      path: toRelative(runtime.paths.projectRoot, diagnosticPath),
-      changeType: 'new',
-      addedLines: 0,
-      removedLines: 0,
-      preview: 'Diagnostico do inquiry (gate/repair).'
-    })
-    feedback.finalSummary('Inquiry concluida sem persistencia critica', [
+    feedback.fileCreated(toRelative(runtime.paths.projectRoot, diagnosticPath), 0, 'Diagnostico do inquiry (gate/repair).')
+    feedback.summary('Inquiry concluida sem persistencia critica', [
       `Stop reason: ${resolveFinalStopReason(parsed, orchestrationStopReason, runtime.confidenceThreshold)}`,
       `Confidence: ${parsed.confidence.toFixed(2)}`,
       `Write gate: blocked (${gate.reason})`,
+      ...(runtime.p1CheckpointEnabled
+        ? [
+            `Checkpoint: ${toRelative(
+              runtime.paths.projectRoot,
+              getInvestigationCheckpointPath(runtime.paths.investigationDir, slug)
+            )}`
+          ]
+        : []),
       `Diagnostico: ${toRelative(runtime.paths.projectRoot, diagnosticPath)}`,
       'Nenhum artifact critico (allegation/finding/conclusion) foi persistido nesta rodada.'
     ])
+    endInquiryStage(metrics, 'persist', { outcome: 'skipped', details: gate.reason })
+    const finalizedMetrics = finalizeInquiryMetrics({
+      metrics,
+      stopReason: resolveFinalStopReason(parsed, orchestrationStopReason, runtime.confidenceThreshold),
+      parsedFindings: parsed.findings.length,
+      persistedFindings: 0,
+      reviewQueueFindings: reviewQueue.length,
+      sensitiveOccurrences,
+      sensitiveBlocked,
+      criticalWriteGateMode: gate.mode
+    })
+    if (runtime.p2ObservabilityEnabled) {
+      const metricsPath = await writeInquiryMetricsArtifact({
+        eventsDir: runtime.paths.eventsDir,
+        metrics: finalizedMetrics
+      })
+      feedback.fileCreated(toRelative(runtime.paths.projectRoot, metricsPath), 0, 'Métricas operacionais de inquiry.')
+    }
     if (ownsFeedback) {
       await feedback.flush()
     }
@@ -409,37 +656,22 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
         criticalWriteGate: gate.mode,
         needsRepair: contract.needsRepair,
         repairReasons: contract.repairReasons
-      }
+      },
+      ...(runtime.editorialGovernanceMode !== 'off'
+        ? { governance: createDefaultEditorialGovernance() }
+        : {})
     },
     { paths: runtime.paths }
   )
 
   for (const p of persisted.allegationPaths) {
-    feedback.fileChange({
-      path: toRelative(runtime.paths.projectRoot, p),
-      changeType: 'new',
-      addedLines: 0,
-      removedLines: 0,
-      preview: 'Allegation gerada pelo inquiry.'
-    })
+    feedback.fileCreated(toRelative(runtime.paths.projectRoot, p), 0, 'Allegation gerada pelo inquiry.')
   }
   for (const p of persisted.findingPaths) {
-    feedback.fileChange({
-      path: toRelative(runtime.paths.projectRoot, p),
-      changeType: 'new',
-      addedLines: 0,
-      removedLines: 0,
-      preview: 'Finding gerado pelo inquiry.'
-    })
+    feedback.fileCreated(toRelative(runtime.paths.projectRoot, p), 0, 'Finding gerado pelo inquiry.')
   }
   if (persisted.reviewPath) {
-    feedback.fileChange({
-      path: toRelative(runtime.paths.projectRoot, persisted.reviewPath),
-      changeType: 'new',
-      addedLines: 0,
-      removedLines: 0,
-      preview: 'Fila de revisão de evidências (weak/missing).'
-    })
+    feedback.fileCreated(toRelative(runtime.paths.projectRoot, persisted.reviewPath), 0, 'Fila de revisão de evidências (weak/missing).')
   }
 
   const leadUpdated = await appendLeadConclusion(
@@ -452,23 +684,89 @@ export async function runInquiry(options: RunInquiryOptions): Promise<void> {
         criticalWriteGate: gate.mode,
         needsRepair: contract.needsRepair,
         repairReasons: contract.repairReasons
-      }
+      },
+      ...(runtime.editorialGovernanceMode !== 'off'
+        ? { governance: createDefaultEditorialGovernance() }
+        : {})
     },
     { paths: runtime.paths }
   )
-  feedback.fileChange({
-    path: toRelative(runtime.paths.projectRoot, leadUpdated),
-    changeType: 'edited',
-    addedLines: 0,
-    removedLines: 0,
-    preview: '# Conclusion atualizado com resultado da inquiry.'
-  })
+  if (runtime.p1CheckpointEnabled) {
+    await saveInvestigationCheckpoint(runtime.paths.investigationDir, {
+      leadSlug: slug,
+      stage: 'post_persist',
+      ...(repairedPlan ? { repairedPlan } : {}),
+      ...(orchestrationStopReason
+        ? {
+            loopProgress: {
+              stopReason: orchestrationStopReason,
+              steps: 0,
+              toolCalls: 0,
+              confidence: parsed.confidence
+            }
+          }
+        : {}),
+      gate,
+      reviewQueueIds: reviewQueue.map((item) => item.id),
+      repairState: {
+        needsRepair: contract.needsRepair,
+        reasons: contract.repairReasons
+      }
+    })
+  }
+  feedback.fileEdited(toRelative(runtime.paths.projectRoot, leadUpdated))
+
+  if (feedback.allegation) {
+    for (const allegation of parsed.allegations) {
+      const relatedFindings = findingsToPersist
+        .filter((f) => f.supportsAllegationIds.includes(allegation.id))
+        .map((f) => ({
+          id: f.id,
+          text: f.claim,
+          status: f.status,
+          sourceRefs: f.evidence.map((e) => e.source_id).filter(Boolean),
+        }))
+      feedback.allegation({
+        id: allegation.id,
+        title: allegation.statement,
+        leadSlug: `lead-${slug}`,
+        status: 'pending',
+        findings: relatedFindings,
+      })
+    }
+  }
 
   const finalStopReason = resolveFinalStopReason(parsed, orchestrationStopReason, runtime.confidenceThreshold)
-  feedback.finalSummary('Inquiry concluida', [
+  endInquiryStage(metrics, 'persist', { outcome: 'ok' })
+  const finalizedMetrics = finalizeInquiryMetrics({
+    metrics,
+    stopReason: finalStopReason,
+    parsedFindings: parsed.findings.length,
+    persistedFindings: persisted.findingPaths.length,
+    reviewQueueFindings: reviewQueue.length,
+    sensitiveOccurrences,
+    sensitiveBlocked,
+    criticalWriteGateMode: gate.mode
+  })
+  if (runtime.p2ObservabilityEnabled) {
+      const metricsPath = await writeInquiryMetricsArtifact({
+        eventsDir: runtime.paths.eventsDir,
+        metrics: finalizedMetrics
+      })
+      feedback.fileCreated(toRelative(runtime.paths.projectRoot, metricsPath), 0, 'Métricas operacionais de inquiry.')
+    }
+  feedback.summary('Inquiry concluida', [
     `Stop reason: ${finalStopReason}`,
     `Confidence: ${parsed.confidence.toFixed(2)}`,
     `Write gate: ${gate.mode}`,
+    ...(runtime.p1CheckpointEnabled
+      ? [
+          `Checkpoint: ${toRelative(
+            runtime.paths.projectRoot,
+            getInvestigationCheckpointPath(runtime.paths.investigationDir, slug)
+          )}`
+        ]
+      : []),
     ...(contract.needsRepair ? [`Contract repair state: needs_repair (${contract.repairReasons.join(' | ')})`] : []),
     `Lead atualizado: ${toRelative(runtime.paths.projectRoot, leadUpdated)}`,
     `Allegations: ${persisted.allegationPaths.length}`,
@@ -637,7 +935,7 @@ async function requestStrictInquiryPayload(input: {
   userPrompt: string
   selfRepairEnabled: boolean
   selfRepairMaxRounds: number
-  feedback: FeedbackController
+  feedback: UiFeedbackController
 }): Promise<InquiryContractResult> {
   let validated: ParsedInquiry
   try {
@@ -662,17 +960,17 @@ async function requestStrictInquiryPayload(input: {
     if (!(error instanceof ContractValidationError) || error.contractName !== 'inquiry.final') {
       throw error
     }
-    input.feedback.warn(
+    input.feedback.systemWarn(
       `[inquiry.final] contract validation failed; applying safe fallback and continuing. (${error.details})`
     )
     const recovered = recoverInquiryFromRawPayload(error.lastRaw)
     if (recovered.droppedFindings > 0) {
-      input.feedback.warn(
+      input.feedback.systemWarn(
         `[inquiry.final] removed ${recovered.droppedFindings} finding(s) without valid evidence to preserve contract integrity.`
       )
     }
     if (recovered.rawFindings === 0 && recovered.parsed.findings.length === 0) {
-      input.feedback.warn(
+      input.feedback.systemWarn(
         '[inquiry.final] no valid findings recovered; proceeding with safe negative fallback.'
       )
     }
@@ -752,7 +1050,7 @@ async function requestContractJson<T>(input: {
   hardRules: string[]
   selfRepairEnabled: boolean
   selfRepairMaxRounds: number
-  feedback: FeedbackController
+  feedback: UiFeedbackController
   validator: (value: unknown) => { ok: true; value: T } | { ok: false; errors: Array<{ path: string; message: string }> }
 }): Promise<T> {
   let raw = await input.client.chatText({
@@ -782,7 +1080,7 @@ async function requestContractJson<T>(input: {
   }
 
   for (let round = 1; round <= input.selfRepairMaxRounds; round += 1) {
-    input.feedback.warn(`[${input.contractName}] invalid payload; self-repair round ${round}...`)
+    input.feedback.systemWarn(`[${input.contractName}] invalid payload; self-repair round ${round}...`)
     raw = await input.client.chatText({
       model: input.model,
       system: buildCritiqueRepairSystemPrompt(),
@@ -815,7 +1113,7 @@ async function createInquiryExecutionPlan(input: {
   selfRepairEnabled: boolean
   selfRepairMaxRounds: number
   enrichedToolManifestEnabled: boolean
-  feedback: FeedbackController
+  feedback: UiFeedbackController
 }): Promise<StructuredExecutionPlan> {
   const toolManifest = input.enrichedToolManifestEnabled
     ? getToolDefinitions()
@@ -867,11 +1165,11 @@ async function createInquiryExecutionPlan(input: {
 function prevalidateAndRepairExecutionPlan(
   plan: StructuredExecutionPlan,
   filesystemDir: string,
-  feedback: FeedbackController
+  feedback: UiFeedbackController
 ): StructuredExecutionPlan {
   const firstPass = validatePlanToolInputs(plan.actions)
   if (firstPass.length === 0) return plan
-  feedback.warn(
+  feedback.systemWarn(
     `[inquiry.plan] invalid tool inputs detected (${firstPass.length}); applying one repair pass before loop.`
   )
   const repairedActions = repairPlanActions(plan.actions, firstPass, filesystemDir)
@@ -1126,7 +1424,8 @@ function summarizeLoop(
 async function verifyFindingsWithGate(
   findings: ParsedInquiry['findings'],
   paths: LabPaths,
-  minConfidence: number
+  minConfidence: number,
+  mode: EvidenceVerificationMode
 ): Promise<{
   verified: ParsedInquiry['findings']
   reviewQueue: ParsedInquiry['findings']
@@ -1134,15 +1433,13 @@ async function verifyFindingsWithGate(
   const verified: ParsedInquiry['findings'] = []
   const reviewQueue: ParsedInquiry['findings'] = []
   for (const finding of findings) {
-    const checkedEvidence = await Promise.all(
-      finding.evidence.map((item) =>
-        verifyEvidenceItem({
-          evidence: item,
-          paths,
-          minConfidence
-        })
-      )
-    )
+    const checkedEvidence = await verifyFindingEvidenceWithMode({
+      claim: finding.claim,
+      evidence: finding.evidence,
+      paths,
+      minConfidence,
+      mode
+    })
     const promotableEvidence = keepVerifiedEvidence(checkedEvidence)
     if (promotableEvidence.length > 0) {
       verified.push({
@@ -1250,6 +1547,67 @@ function resolveFinalStopReason(
   if (parsed.scenario === 'positive') return 'goal_reached'
   if (parsed.scenario === 'plan_another_inquiry') return 'insufficient_evidence'
   return 'insufficient_evidence'
+}
+
+function createCompliancePolicy(defaultDecision: ComplianceDecision): {
+  defaultDecision: ComplianceDecision
+  byRisk: { high: 'warn' }
+  byCapability: { persist: 'warn' }
+} {
+  return {
+    defaultDecision,
+    byRisk: {
+      high: 'warn'
+    },
+    byCapability: {
+      persist: 'warn'
+    }
+  } as const
+}
+
+function renderDomainSubagentContext(outputs: DomainSubagentResult[]): string {
+  if (outputs.length === 0) return ''
+  return `Domain subagents: ${outputs.map((item) => `${item.domain}:${item.ok ? 'ok' : 'fail'}`).join(' | ')}`
+}
+
+function executeDefaultDomainSubagent(plan: DomainSubagentPlan): DomainSubagentResult {
+  const summary = `Read-only review for ${plan.domain} generated with bounded context.`
+  return {
+    domain: plan.domain,
+    ok: true,
+    summary,
+    evidence: [],
+    warnings: []
+  }
+}
+
+function buildInquiryGovernanceTargets(input: {
+  slug: string
+  allegations: Array<{ id: string }>
+  findings: Array<{ id: string }>
+  reviewQueue: Array<{ id: string }>
+}): Array<{
+  artifactType: 'lead' | 'allegation' | 'finding' | 'evidence_review_queue'
+  artifactId: string
+}> {
+  return [
+    {
+      artifactType: 'lead' as const,
+      artifactId: `lead-${input.slug}`
+    },
+    ...input.allegations.map((item) => ({
+      artifactType: 'allegation' as const,
+      artifactId: item.id
+    })),
+    ...input.findings.map((item) => ({
+      artifactType: 'finding' as const,
+      artifactId: item.id
+    })),
+    ...input.reviewQueue.map((item) => ({
+      artifactType: 'evidence_review_queue' as const,
+      artifactId: item.id
+    }))
+  ]
 }
 
 function defaultConclusion(scenario: InquiryScenario): string {

@@ -48,7 +48,8 @@ export async function findProjectRoot(fromDir: string): Promise<string> {
 export async function resolveLabPaths(cwd: string): Promise<LabPaths> {
   const projectRoot = await findProjectRoot(cwd)
   const labRoot = path.join(projectRoot, 'lab', 'agent')
-  const filesystemDir = path.join(labRoot, 'filesystem')
+  const filesystemName = process.env['AGENT_FILESYSTEM_DIR'] ?? 'filesystem'
+  const filesystemDir = path.join(labRoot, filesystemName)
   const sourceDir = path.join(filesystemDir, 'source')
   const sourceArtifactsDir = path.join(sourceDir, '.artifacts')
   const outputDir = filesystemDir

@@ -11,7 +11,8 @@ import {
 import { createLeadFile } from '../tools/investigative/create-lead-file.js'
 import { toRelative } from '../core/paths.js'
 import { OpenRouterClient } from '../llm/openrouter-client.js'
-import { createFeedbackController, type FeedbackController, type FeedbackMode } from '../cli/renderer.js'
+import type { UiFeedbackController } from '../feedback/ui-feedback.js'
+import { createFeedbackController, type FeedbackMode } from '../cli/renderer.js'
 import {
   buildDigSystemPrompt,
   buildDigIncrementalPrompt,
@@ -47,7 +48,7 @@ export interface RunDigOptions {
   selfRepairEnabled?: boolean
   selfRepairMaxRounds?: number
   feedbackMode?: FeedbackMode
-  feedback?: FeedbackController
+  feedback?: UiFeedbackController
 }
 
 async function loadExistingLeadsMarkdown(leadsDir: string): Promise<string> {
@@ -97,11 +98,9 @@ export async function runDig(options: RunDigOptions = {}): Promise<void> {
       ...(options.feedbackMode ? { mode: options.feedbackMode } : {})
     }))
 
-  feedback.step('Iniciando deep-dive (escavacao aprofundada de leads)...', 'in_progress')
-  feedback.step(
-    `Carregando previews de ${toRelative(runtime.paths.projectRoot, runtime.paths.sourceArtifactsDir)}`,
-    'in_progress'
-  )
+  feedback.stepStart('dig-start', 'Iniciando deep-dive (escavacao aprofundada de leads)...')
+  feedback.stepComplete('dig-start')
+  feedback.stepStart('dig-load', `Carregando previews de ${toRelative(runtime.paths.projectRoot, runtime.paths.sourceArtifactsDir)}`)
 
   const { previews } = await loadPreviewsIncremental(
     runtime.paths.sourceArtifactsDir,
@@ -114,8 +113,13 @@ export async function runDig(options: RunDigOptions = {}): Promise<void> {
     )
   }
 
-  feedback.step(`${previews.length} preview(s) carregado(s)`, 'completed')
-  feedback.step('Analise incremental (um preview por vez)...', 'in_progress')
+  feedback.stepComplete('dig-load', `${previews.length} preview(s) carregado(s)`)
+
+  for (const p of previews) {
+    feedback.sourceConsulted?.(p.documentName, p.documentName)
+  }
+
+  feedback.stepStart('dig-incremental', 'Analise incremental (um preview por vez)...')
 
   const client = new OpenRouterClient(runtime.apiKey)
   const responseLanguage = resolveResponseLanguageForPrompt({
@@ -127,7 +131,7 @@ export async function runDig(options: RunDigOptions = {}): Promise<void> {
 
   for (let i = 0; i < previews.length; i += 1) {
     const p = previews[i]!
-    feedback.step(`Documento ${i + 1}/${previews.length}: ${p.documentName}`, 'in_progress')
+    feedback.stepStart(`dig-doc-${i}`, `Documento ${i + 1}/${previews.length}: ${p.documentName}`)
     const conclusion = await requestStrictDigPayload({
       client,
       model: runtime.model,
@@ -144,11 +148,12 @@ export async function runDig(options: RunDigOptions = {}): Promise<void> {
       ],
       validator: validateDigIncrementalPayload
     })
+    feedback.stepComplete(`dig-doc-${i}`)
     accumulatedConclusions = conclusion
   }
 
-  feedback.step('Analise incremental concluida', 'completed')
-  feedback.step('Gerando linhas investigativas a partir das conclusoes...', 'in_progress')
+  feedback.stepComplete('dig-incremental', 'Analise incremental concluida')
+  feedback.stepStart('dig-lines', 'Gerando linhas investigativas a partir das conclusoes...')
 
   if (!accumulatedConclusions) {
     throw new Error('Falha ao consolidar conclusoes incrementais do dig.')
@@ -171,7 +176,8 @@ export async function runDig(options: RunDigOptions = {}): Promise<void> {
     validator: validateDigLinesPayload
   })
 
-  feedback.step('Comparando com leads existentes e ranqueando top 3...', 'in_progress')
+  feedback.stepComplete('dig-lines')
+  feedback.stepStart('dig-rank', 'Comparando com leads existentes e ranqueando top 3...')
 
   const existingLeads = await loadExistingLeadsMarkdown(runtime.paths.leadsDir)
   const existingMarkdown = existingLeads
@@ -220,7 +226,7 @@ export async function runDig(options: RunDigOptions = {}): Promise<void> {
     finalResult = validated.value
   }
 
-  feedback.step('Deep-dive concluido', 'completed')
+  feedback.stepComplete('dig-rank', 'Deep-dive concluido')
 
   const finalText = renderDigMarkdownReport({
     accumulatedConclusions,
@@ -273,9 +279,21 @@ export async function runDig(options: RunDigOptions = {}): Promise<void> {
     sessionId
   )
 
+  for (const lead of draftLeads) {
+    if (lead.createdInLastRun) {
+      feedback.leadSuggestion?.({
+        leadId: lead.slug,
+        slug: lead.slug,
+        title: lead.title,
+        description: lead.description,
+        status: 'draft'
+      })
+    }
+  }
+
   const suggestions = draftLeads.map((item, index) => `${index + 1}. ${item.title} (${item.slug})`)
   const skipped = draftLeads.filter((item) => !item.createdInLastRun).length
-  feedback.finalSummary('Deep-dive pronto', [
+  feedback.summary('Deep-dive pronto', [
     'Analise concluida e contexto interno atualizado para os proximos turnos.',
     `Session ID: ${sessionId}`,
     `Leads sugeridos (${draftLeads.length}):`,
@@ -533,7 +551,7 @@ async function requestStrictDigPayload<T>(input: {
   userPrompt: string
   selfRepairEnabled: boolean
   selfRepairMaxRounds: number
-  feedback: FeedbackController
+  feedback: UiFeedbackController
   contractName: 'dig.incremental' | 'dig.lines' | 'dig.comparison'
   hardRules: string[]
   validator: (value: unknown) => { ok: true; value: T } | { ok: false; errors: Array<{ path: string; message: string }> }
@@ -561,7 +579,7 @@ async function requestStrictDigPayload<T>(input: {
   }
 
   for (let round = 1; round <= input.selfRepairMaxRounds; round += 1) {
-    input.feedback.warn(`[${input.contractName}] invalid payload; self-repair round ${round}...`)
+    input.feedback.systemWarn(`[${input.contractName}] invalid payload; self-repair round ${round}...`)
     raw = await input.client.chatText({
       model: input.model,
       system: buildCritiqueRepairSystemPrompt(),

@@ -150,3 +150,15 @@ test('resolveCriticalWriteGateDecision aprova quando persist foi planejado e loo
   assert.equal(decision.approved, true)
   assert.equal(decision.mode, 'approved')
 })
+
+test('resolveCriticalWriteGateDecision mantém bloqueio P0 quando falta persist planejado', () => {
+  const decision = resolveCriticalWriteGateDecision({
+    gateEnabled: true,
+    requireExplicitWriteApproval: true,
+    hasPersistActionPlanned: false,
+    orchestrationStopReason: 'goal_reached'
+  })
+  assert.equal(decision.approved, false)
+  assert.equal(decision.mode, 'blocked')
+  assert.match(decision.reason, /missing_explicit_persist_approval/)
+})
