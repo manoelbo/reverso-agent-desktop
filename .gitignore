@@ -45,3 +45,9 @@ sessions/**
 !events/.gitkeep
 !reports/.gitkeep
 !sessions/.gitkeep
+
+# Agent GUI runtime filesystems (manter apenas estrutura)
+lab/agent-gui/filesystem/**
+lab/agent-gui/filesystem_test/**
+!lab/agent-gui/filesystem/.gitkeep
+!lab/agent-gui/filesystem_test/.gitkeep
