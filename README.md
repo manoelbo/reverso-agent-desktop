@@ -219,3 +219,7 @@ pnpm lab:markdown-mortor:dev
 pnpm typecheck
 pnpm test
 ```
+
+## License
+
+This project is open source and distributed under the MIT License.
