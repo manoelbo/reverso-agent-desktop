@@ -5,6 +5,7 @@ import { useMemo } from "react"
 
 import { FrontmatterPanel } from "@/components/app/markdown/FrontmatterPanel"
 import { renderReversoMarkdownDocument } from "@/components/app/markdown/markdown-engine"
+import type { WikiLinkResolver } from "@/components/app/markdown/plugins/wiki-links"
 import { cn } from "@/lib/utils"
 
 export type ReversoMarkdownVariant = "default" | "editorial" | "evidence" | "analyst"
@@ -14,8 +15,10 @@ type ReversoMarkdownProps = {
   className?: string
   variant?: ReversoMarkdownVariant
   onWikiLinkClick?: (value: string, href: string) => void
-  wikiLinkResolver?: (value: string) => string
+  wikiLinkResolver?: WikiLinkResolver
   wikiLinkShowIcon?: boolean
+  enableClaimBlocks?: boolean
+  currentRelativePath?: string
 }
 
 const markdownVariantClassMap: Record<ReversoMarkdownVariant, string> = {
@@ -35,7 +38,9 @@ const markdownBaseBodyClass =
   "[&_p]:text-pretty [&_ul]:marker:text-muted-foreground [&_ol]:marker:text-muted-foreground " +
   "[&_table]:text-sm [&_.reverso-wikilink]:inline-flex [&_.reverso-wikilink]:items-center [&_.reverso-wikilink]:gap-1 " +
   "[&_.reverso-wikilink]:font-medium [&_.reverso-wikilink]:text-primary [&_.reverso-wikilink]:transition-colors " +
-  "[&_.reverso-wikilink]:hover:text-primary/80 [&_.reverso-wikilink-icon]:text-[11px] [&_.reverso-wikilink-icon]:opacity-80"
+  "[&_.reverso-wikilink]:hover:text-primary/80 [&_.reverso-wikilink-icon]:text-[11px] [&_.reverso-wikilink-icon]:opacity-80 " +
+  "[&_.reverso-wikilink.reverso-wikilink-investigation]:no-underline [&_.reverso-wikilink.reverso-wikilink-investigation]:decoration-transparent " +
+  "[&_.reverso-wikilink.reverso-wikilink-investigation]:items-start [&_.reverso-wikilink.reverso-wikilink-investigation]:gap-1.5"
 
 const markdownBodyClassMap: Record<ReversoMarkdownVariant, string> = {
   default:
@@ -46,12 +51,7 @@ const markdownBodyClassMap: Record<ReversoMarkdownVariant, string> = {
     "[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-border/70 [&_th]:bg-muted/40 [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left " +
     "[&_td]:border [&_td]:border-border/70 [&_td]:px-2.5 [&_td]:py-2 " +
     "[&_.reverso-wikilink]:underline [&_.reverso-wikilink]:underline-offset-2 " +
-    "[&_.reverso-event]:my-4 [&_.reverso-event]:rounded-lg [&_.reverso-event]:border [&_.reverso-event]:border-border/70 [&_.reverso-event]:bg-background [&_.reverso-event]:p-4 " +
-    "[&_.reverso-event-header]:mb-2 [&_.reverso-event-header]:flex [&_.reverso-event-header]:items-center [&_.reverso-event-header]:gap-2 " +
-    "[&_.reverso-event-date]:text-sm [&_.reverso-event-date]:font-medium " +
-    "[&_.reverso-event-badge]:rounded-md [&_.reverso-event-badge]:bg-muted [&_.reverso-event-badge]:px-2 [&_.reverso-event-badge]:py-0.5 [&_.reverso-event-badge]:text-xs " +
-    "[&_.reverso-event-meta]:space-y-1 [&_.reverso-event-meta]:text-xs [&_.reverso-event-meta]:text-muted-foreground " +
-    "[&_.reverso-event-actor]:mr-1.5 [&_.reverso-event-actor]:inline-flex [&_.reverso-event-actor]:rounded [&_.reverso-event-actor]:bg-muted/70 [&_.reverso-event-actor]:px-1.5 [&_.reverso-event-actor]:py-0.5",
+    "[&_.reverso-event]:my-4",
   editorial:
     "[&_h1]:mb-4 [&_h1]:text-3xl [&_h1]:font-semibold [&_h1]:tracking-tight [&_h2]:mb-2 [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold " +
     "[&_h3]:mb-1 [&_h3]:mt-5 [&_h3]:text-base [&_h3]:font-semibold [&_p]:my-3 [&_p]:max-w-[74ch] [&_p]:leading-8 " +
@@ -61,11 +61,7 @@ const markdownBodyClassMap: Record<ReversoMarkdownVariant, string> = {
     "[&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_th]:border-b [&_th]:border-border [&_th]:bg-muted/25 [&_th]:px-3 [&_th]:py-2.5 [&_th]:text-left " +
     "[&_td]:border-b [&_td]:border-border/60 [&_td]:px-3 [&_td]:py-2.5 " +
     "[&_.reverso-wikilink]:underline [&_.reverso-wikilink]:decoration-primary/50 [&_.reverso-wikilink]:underline-offset-3 " +
-    "[&_.reverso-event]:my-5 [&_.reverso-event]:rounded-xl [&_.reverso-event]:border [&_.reverso-event]:border-border/60 [&_.reverso-event]:bg-muted/15 [&_.reverso-event]:p-4 " +
-    "[&_.reverso-event-header]:mb-3 [&_.reverso-event-header]:flex [&_.reverso-event-header]:items-center [&_.reverso-event-header]:gap-2 " +
-    "[&_.reverso-event-date]:text-sm [&_.reverso-event-date]:font-semibold " +
-    "[&_.reverso-event-badge]:rounded-md [&_.reverso-event-badge]:bg-primary/10 [&_.reverso-event-badge]:px-2 [&_.reverso-event-badge]:py-0.5 [&_.reverso-event-badge]:text-xs [&_.reverso-event-badge]:text-primary " +
-    "[&_.reverso-event-meta]:space-y-1 [&_.reverso-event-meta]:text-xs [&_.reverso-event-meta]:text-muted-foreground",
+    "[&_.reverso-event]:my-5",
   evidence:
     "[&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold " +
     "[&_h3]:mb-1 [&_h3]:mt-4 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:uppercase [&_h3]:tracking-wide [&_p]:my-2 [&_p]:leading-7 " +
@@ -73,12 +69,7 @@ const markdownBodyClassMap: Record<ReversoMarkdownVariant, string> = {
     "[&_table]:my-4 [&_table]:w-full [&_table]:border-separate [&_table]:border-spacing-0 [&_th]:border [&_th]:border-border/70 [&_th]:bg-muted/55 [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:text-left " +
     "[&_td]:border [&_td]:border-border/50 [&_td]:px-2.5 [&_td]:py-1.5 " +
     "[&_.reverso-wikilink]:rounded-md [&_.reverso-wikilink]:bg-primary/10 [&_.reverso-wikilink]:px-1.5 [&_.reverso-wikilink]:py-0.5 [&_.reverso-wikilink]:no-underline " +
-    "[&_.reverso-event]:my-4 [&_.reverso-event]:rounded-xl [&_.reverso-event]:border [&_.reverso-event]:border-primary/35 [&_.reverso-event]:bg-card [&_.reverso-event]:p-4 [&_.reverso-event]:shadow-sm " +
-    "[&_.reverso-event-header]:mb-2 [&_.reverso-event-header]:flex [&_.reverso-event-header]:items-center [&_.reverso-event-header]:gap-2 " +
-    "[&_.reverso-event-date]:text-xs [&_.reverso-event-date]:font-semibold [&_.reverso-event-date]:uppercase [&_.reverso-event-date]:tracking-wide " +
-    "[&_.reverso-event-badge]:rounded [&_.reverso-event-badge]:border [&_.reverso-event-badge]:border-primary/40 [&_.reverso-event-badge]:bg-primary/10 [&_.reverso-event-badge]:px-2 [&_.reverso-event-badge]:py-0.5 [&_.reverso-event-badge]:text-[11px] [&_.reverso-event-badge]:font-medium " +
-    "[&_.reverso-event-meta]:space-y-1 [&_.reverso-event-meta]:text-xs [&_.reverso-event-meta]:text-muted-foreground " +
-    "[&_.reverso-event-actor]:mr-1.5 [&_.reverso-event-actor]:inline-flex [&_.reverso-event-actor]:rounded [&_.reverso-event-actor]:bg-muted/80 [&_.reverso-event-actor]:px-1.5 [&_.reverso-event-actor]:py-0.5",
+    "[&_.reverso-event]:my-4",
   analyst:
     "[&_h1]:mb-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:mb-1 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-semibold " +
     "[&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold [&_p]:my-1.5 [&_p]:text-sm [&_p]:leading-6 " +
@@ -87,11 +78,7 @@ const markdownBodyClassMap: Record<ReversoMarkdownVariant, string> = {
     "[&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-border/60 [&_th]:bg-muted/45 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide " +
     "[&_td]:border [&_td]:border-border/50 [&_td]:px-2 [&_td]:py-1 [&_td]:text-sm " +
     "[&_.reverso-wikilink]:underline [&_.reverso-wikilink]:underline-offset-2 " +
-    "[&_.reverso-event]:my-3 [&_.reverso-event]:rounded-md [&_.reverso-event]:border [&_.reverso-event]:border-border/70 [&_.reverso-event]:bg-background [&_.reverso-event]:p-3 " +
-    "[&_.reverso-event-header]:mb-2 [&_.reverso-event-header]:flex [&_.reverso-event-header]:items-center [&_.reverso-event-header]:gap-2 " +
-    "[&_.reverso-event-date]:text-xs [&_.reverso-event-date]:font-medium " +
-    "[&_.reverso-event-badge]:rounded [&_.reverso-event-badge]:bg-muted [&_.reverso-event-badge]:px-2 [&_.reverso-event-badge]:py-0.5 [&_.reverso-event-badge]:text-[11px] " +
-    "[&_.reverso-event-meta]:space-y-1 [&_.reverso-event-meta]:text-[11px] [&_.reverso-event-meta]:text-muted-foreground",
+    "[&_.reverso-event]:my-3",
 }
 
 export function ReversoMarkdown({
@@ -101,10 +88,18 @@ export function ReversoMarkdown({
   onWikiLinkClick,
   wikiLinkResolver,
   wikiLinkShowIcon = false,
+  enableClaimBlocks = false,
+  currentRelativePath,
 }: ReversoMarkdownProps): JSX.Element {
   const document = useMemo(
-    () => renderReversoMarkdownDocument(content, { wikiLinkResolver, wikiLinkShowIcon }),
-    [content, wikiLinkResolver, wikiLinkShowIcon]
+    () =>
+      renderReversoMarkdownDocument(content, {
+        wikiLinkResolver,
+        wikiLinkShowIcon,
+        enableClaimBlocks,
+        currentDocumentPath: currentRelativePath,
+      }),
+    [content, wikiLinkResolver, wikiLinkShowIcon, enableClaimBlocks, currentRelativePath]
   )
 
   const frontmatterEntries = useMemo(

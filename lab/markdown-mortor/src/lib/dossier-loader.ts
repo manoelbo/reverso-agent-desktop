@@ -1,13 +1,13 @@
 export type DossierFile = {
   path: string
   relativePath: string
-  section: "groups" | "people" | "places" | "timeline" | "sources"
+  section: "groups" | "people" | "places" | "timeline" | "sources" | "leads" | "findings" | "allegations"
   label: string
   load: () => Promise<string>
 }
 
 export type DossierTree = {
-  section: "groups" | "people" | "places" | "timeline" | "sources"
+  section: "groups" | "people" | "places" | "timeline" | "sources" | "leads" | "findings" | "allegations"
   label: string
   entries: DossierTreeEntry[]
 }
@@ -76,6 +76,9 @@ export function groupBySection(files: DossierFile[]): DossierTree[] {
     places: "Places",
     timeline: "Timeline",
     sources: "Sources",
+    leads: "Leads",
+    findings: "Findings",
+    allegations: "Allegations",
   }
 
   return sections.map((section) => {

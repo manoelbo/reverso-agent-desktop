@@ -1,0 +1,3 @@
+packages:
+  - 'lab/agent'
+  - 'lab/agent-cli'

@@ -9,6 +9,7 @@ import { TemplateControls } from "@/components/template-controls"
 import { RenderPanel, type RenderState } from "@/components/render-panel"
 import { loadDossierFiles, groupBySection, type DossierFile } from "@/lib/dossier-loader"
 import { loadSourceFiles, buildSourceTree } from "@/lib/source-loader"
+import { loadInvestigationFiles, buildInvestigationTrees } from "@/lib/investigation-loader"
 import { getTemplates } from "@/templates/registry"
 import { normalizeWikiKey } from "@/lib/utils"
 
@@ -52,9 +53,19 @@ export function App() {
 
   const dossierFiles = useMemo(() => loadDossierFiles(), [])
   const sourceFiles = useMemo(() => loadSourceFiles(), [])
-  // Unified list: dossier files for wikiIndex + source files for cache/sidebar
-  const files = useMemo(() => [...dossierFiles, ...sourceFiles], [dossierFiles, sourceFiles])
-  const trees = useMemo(() => [...groupBySection(dossierFiles), buildSourceTree(sourceFiles)], [dossierFiles, sourceFiles])
+  const investigationFiles = useMemo(() => loadInvestigationFiles(), [])
+  const files = useMemo(
+    () => [...dossierFiles, ...sourceFiles, ...investigationFiles],
+    [dossierFiles, sourceFiles, investigationFiles]
+  )
+  const trees = useMemo(
+    () => [
+      ...groupBySection(dossierFiles),
+      buildSourceTree(sourceFiles),
+      ...buildInvestigationTrees(investigationFiles),
+    ],
+    [dossierFiles, sourceFiles, investigationFiles]
+  )
 
   // Eager-load all files at startup
   useEffect(() => {
@@ -98,17 +109,19 @@ export function App() {
     })
   }, [selectedFile, selectedTemplateId, selectedVariationId, cacheReady, contentCache])
 
-  // Wiki index: stem e nome normalizado → DossierFile (apenas dossier, sources não são backlinked)
+  // Wiki index: stem e nome normalizado → DossierFile (dossier + investigation; sources não são backlinked)
   const wikiIndex = useMemo(() => {
     const map = new Map<string, DossierFile>()
-    for (const file of dossierFiles) {
+    const toIndex = (file: DossierFile) => {
       const stem = file.relativePath.split("/").at(-1)?.replace(/\.md$/, "") ?? ""
       map.set(stem, file)
       map.set(normalizeWikiKey(file.label), file)
       map.set(normalizeWikiKey(stem), file)
     }
+    for (const file of dossierFiles) toIndex(file)
+    for (const file of investigationFiles) toIndex(file)
     return map
-  }, [dossierFiles])
+  }, [dossierFiles, investigationFiles])
 
   const wikiLinkResolver = useCallback(
     (value: string): string => {

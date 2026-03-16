@@ -14,6 +14,9 @@ const sectionAccent: Record<string, string> = {
   places: "text-emerald-400",
   timeline: "text-amber-400",
   sources: "text-rose-400",
+  leads: "text-violet-400",
+  findings: "text-teal-400",
+  allegations: "text-red-400",
 }
 
 const sectionDot: Record<string, string> = {
@@ -22,6 +25,9 @@ const sectionDot: Record<string, string> = {
   places: "bg-emerald-400",
   timeline: "bg-amber-400",
   sources: "bg-rose-400",
+  leads: "bg-violet-400",
+  findings: "bg-teal-400",
+  allegations: "bg-red-400",
 }
 
 function SectionIcon({ section }: { section: string }) {
@@ -31,6 +37,9 @@ function SectionIcon({ section }: { section: string }) {
     places: "◈",
     timeline: "◆",
     sources: "⊡",
+    leads: "◐",
+    findings: "◆",
+    allegations: "⚠",
   }
   return (
     <span className={cn("text-[11px]", sectionAccent[section])}>

@@ -3,8 +3,16 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerDossierIpc } from './workspace/dossier-ipc'
+import { registerAgentCliIpc } from './agent-cli/agent-cli-ipc'
+import { registerSourcesIpc } from './workspace/source-ipc'
+import { registerLeadsIpc } from './workspace/lead-ipc'
+import { registerInvestigationIpc } from './workspace/investigation-ipc'
 
 let cleanupDossierIpc: (() => void) | null = null
+let cleanupAgentCliIpc: (() => void) | null = null
+let cleanupSourcesIpc: (() => void) | null = null
+let cleanupLeadsIpc: (() => void) | null = null
+let cleanupInvestigationIpc: (() => void) | null = null
 
 function createWindow(): void {
   // Create the browser window.
@@ -57,9 +65,47 @@ function createWindow(): void {
       console.error('[workspace-markdown] Failed to register dossier IPC', error)
     })
 
+  cleanupAgentCliIpc?.()
+  cleanupAgentCliIpc = registerAgentCliIpc(mainWindow)
+
+  registerSourcesIpc(mainWindow)
+    .then((cleanup) => {
+      cleanupSourcesIpc?.()
+      cleanupSourcesIpc = cleanup
+    })
+    .catch((error) => {
+      console.error('[workspace-sources] Failed to register sources IPC', error)
+    })
+
+  registerLeadsIpc(mainWindow)
+    .then((cleanup) => {
+      cleanupLeadsIpc?.()
+      cleanupLeadsIpc = cleanup
+    })
+    .catch((error) => {
+      console.error('[workspace-leads] Failed to register leads IPC', error)
+    })
+
+  registerInvestigationIpc(mainWindow)
+    .then((cleanup) => {
+      cleanupInvestigationIpc?.()
+      cleanupInvestigationIpc = cleanup
+    })
+    .catch((error) => {
+      console.error('[workspace-investigation] Failed to register investigation IPC', error)
+    })
+
   mainWindow.on('closed', () => {
     cleanupDossierIpc?.()
     cleanupDossierIpc = null
+    cleanupAgentCliIpc?.()
+    cleanupAgentCliIpc = null
+    cleanupSourcesIpc?.()
+    cleanupSourcesIpc = null
+    cleanupLeadsIpc?.()
+    cleanupLeadsIpc = null
+    cleanupInvestigationIpc?.()
+    cleanupInvestigationIpc = null
   })
 }
 
@@ -95,6 +141,14 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   cleanupDossierIpc?.()
   cleanupDossierIpc = null
+  cleanupAgentCliIpc?.()
+  cleanupAgentCliIpc = null
+  cleanupSourcesIpc?.()
+  cleanupSourcesIpc = null
+  cleanupLeadsIpc?.()
+  cleanupLeadsIpc = null
+  cleanupInvestigationIpc?.()
+  cleanupInvestigationIpc = null
   if (process.platform !== 'darwin') {
     app.quit()
   }

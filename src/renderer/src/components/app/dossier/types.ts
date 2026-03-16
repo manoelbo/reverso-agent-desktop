@@ -17,6 +17,8 @@ export type DossierDocumentLookup = {
   byWikiKey: Map<string, DossierFileItem[]>
 }
 
+export type DossierLookup = DossierDocumentLookup
+
 function titleCaseSegment(value: string): string {
   if (!value) return ''
   if (value.length <= 3) return value.toUpperCase()

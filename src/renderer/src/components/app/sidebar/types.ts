@@ -20,6 +20,8 @@ export type SidebarTreeNode = {
 
 export type DossierSidebarFile = {
   name: string
+  title?: string
+  fileName?: string
   relativePath: string
 }
 

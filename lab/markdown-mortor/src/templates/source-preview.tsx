@@ -55,11 +55,11 @@ function extractDocumentSummary(content: string): { title: string; type: string;
   }
 }
 
-// Acento igual ao "source" do editorial-dossier (emerald)
+// Acento Sources (rose) — mesma cor do sidebar
 const sourceAccent = {
-  header: "bg-gradient-to-r from-emerald-500/12 to-transparent border-b border-emerald-500/20",
-  badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-  icon: "text-emerald-500",
+  header: "bg-gradient-to-r from-rose-500/12 to-transparent border-b border-rose-500/20",
+  badge: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
+  icon: "text-rose-500",
 }
 
 // ─── Source Preview Template (mesmo header e metadados do editorial-dossier) ───

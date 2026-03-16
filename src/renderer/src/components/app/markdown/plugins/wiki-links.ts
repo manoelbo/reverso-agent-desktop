@@ -3,12 +3,25 @@ import type MarkdownIt from "markdown-it"
 export type WikiLinkMeta = {
   raw: string
   value: string
+  label: string
   href: string
+  isSelf: boolean
 }
 
-export type WikiLinkResolver = (value: string) => string
+export type WikiLinkResolution = {
+  href: string
+  isSelf?: boolean
+  label?: string
+}
+
+export type WikiLinkResolverContext = {
+  currentDocumentPath?: string
+}
+
+export type WikiLinkResolver = (value: string, context: WikiLinkResolverContext) => string | WikiLinkResolution
 export type WikiLinksPluginOptions = {
   showIcon?: boolean
+  currentDocumentPath?: string
 }
 
 function defaultWikiLinkResolver(value: string): string {
@@ -46,11 +59,16 @@ export function wikiLinksPlugin(
     }
 
     if (!silent) {
-      const href = resolver(rawValue)
+      const resolved = resolver(rawValue, { currentDocumentPath: options.currentDocumentPath })
+      const href = typeof resolved === "string" ? resolved : resolved.href
+      const isSelf = typeof resolved === "string" ? href.startsWith("wikilink://self/") : Boolean(resolved.isSelf)
+      const label = typeof resolved === "string" ? rawValue : resolved.label ?? rawValue
       const meta: WikiLinkMeta = {
         raw: `[[${rawValue}]]`,
         value: rawValue,
+        label,
         href,
+        isSelf,
       }
       const token = state.push("wikilink", "", 0)
       token.meta = meta
@@ -65,8 +83,15 @@ export function wikiLinksPlugin(
     const token = tokens[index]
     const meta = token.meta as WikiLinkMeta | undefined
     const value = meta?.value ?? token.content
+    const label = meta?.label ?? value
     const href = meta?.href ?? defaultWikiLinkResolver(value)
+    const isSelf = meta?.isSelf ?? href.startsWith("wikilink://self/")
+    const isInvestigationWikiLink = href.startsWith("finding://") || href.startsWith("allegation://")
+    if (isSelf) {
+      return `<span class="reverso-wikilink-text">${md.utils.escapeHtml(label)}</span>`
+    }
     const icon = options.showIcon ? '<span class="reverso-wikilink-icon" aria-hidden="true">↗</span>' : ""
-    return `<a href="${md.utils.escapeHtml(href)}" data-wikilink="${md.utils.escapeHtml(value)}" class="reverso-wikilink"><span class="reverso-wikilink-label">${md.utils.escapeHtml(value)}</span>${icon}</a>`
+    const linkClass = isInvestigationWikiLink ? "reverso-wikilink reverso-wikilink-investigation" : "reverso-wikilink"
+    return `<a href="${md.utils.escapeHtml(href)}" data-wikilink="${md.utils.escapeHtml(value)}" class="${linkClass}"><span class="reverso-wikilink-label">${md.utils.escapeHtml(label)}</span>${icon}</a>`
   }
 }

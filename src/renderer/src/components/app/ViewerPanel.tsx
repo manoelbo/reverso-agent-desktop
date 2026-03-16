@@ -21,10 +21,23 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { GroupsViewPanel } from "@/components/app/viewer/GroupsViewPanel"
 import { PeopleViewPanel } from "@/components/app/viewer/PeopleViewPanel"
 import { PlacesViewPanel } from "@/components/app/viewer/PlacesViewPanel"
+import { LeadMarkdownDocumentPanel } from "@/components/app/viewer/LeadMarkdownDocumentPanel"
+import { LeadViewPanel } from "@/components/app/viewer/LeadViewPanel"
 import { SourceViewPanel } from "@/components/app/viewer/SourceViewPanel"
 import { TimelineViewPanel } from "@/components/app/viewer/TimelineViewPanel"
 import { DossierMarkdownDocumentPanel } from "@/components/app/viewer/DossierMarkdownDocumentPanel"
+import { SourceMarkdownDocumentPanel } from "@/components/app/viewer/SourceMarkdownDocumentPanel"
+import { GraphViewPanel } from "@/components/app/viewer/GraphViewPanel"
+import { FindingViewPanel } from "@/components/app/viewer/FindingViewPanel"
+import { AllegationViewPanel } from "@/components/app/viewer/AllegationViewPanel"
+import { InvestigationMarkdownDocumentPanel } from "@/components/app/viewer/InvestigationMarkdownDocumentPanel"
 import type { DossierIndexPayload } from "../../../../shared/workspace-markdown"
+import type { LeadsIndexPayload } from "../../../../shared/workspace-leads"
+import type { InvestigationDocumentKind, InvestigationIndexPayload } from "../../../../shared/workspace-investigation"
+import type { SourcesIndexPayload } from "../../../../shared/workspace-sources"
+import type { SelectedLeadDocument } from "@/components/app/leads/types"
+import type { SelectedSourceDocument } from "@/components/app/sources/types"
+import type { SelectedInvestigationDocument } from "@/components/app/investigation/types"
 
 type DossierViewId = Extract<ShellViewId, "dossier-people" | "dossier-groups" | "dossier-places" | "dossier-timeline">
 
@@ -37,8 +50,33 @@ type ViewerPanelProps = {
   dossierIndexError: string | null
   dossierIndexStale: boolean
   selectedDossierDocument: SelectedDossierDocument | null
+  leadsIndex: LeadsIndexPayload | null
+  leadsIndexLoading: boolean
+  leadsIndexError: string | null
+  leadsIndexStale: boolean
+  selectedLeadDocument: SelectedLeadDocument | null
+  investigationIndex: InvestigationIndexPayload | null
+  investigationIndexLoading: boolean
+  investigationIndexError: string | null
+  investigationIndexStale: boolean
+  selectedInvestigationDocument: SelectedInvestigationDocument | null
+  sourcesIndex: SourcesIndexPayload | null
+  sourcesIndexLoading: boolean
+  sourcesIndexError: string | null
+  sourcesIndexStale: boolean
+  selectedSourceDocument: SelectedSourceDocument | null
   onOpenDossierDocument: (relativePath: string) => void
   onOpenDossierDocumentFromWikiLink: (relativePath: string) => void
+  onOpenSourceDocumentFromWikiLink: (relativePath: string) => void
+  onOpenLeadDocument: (relativePath: string) => void
+  onOpenLeadDocumentFromWikiLink: (relativePath: string) => void
+  onOpenFindingDocument: (relativePath: string) => void
+  onOpenFindingDocumentFromWikiLink: (relativePath: string) => void
+  onOpenAllegationDocument: (relativePath: string) => void
+  onOpenAllegationDocumentFromWikiLink: (relativePath: string) => void
+  onOpenInvestigationDocument: (documentKind: InvestigationDocumentKind, relativePath: string) => void
+  onOpenSourceDocument: (relativePath: string) => void
+  onSelectCommand: (command: string) => void
   onNavigateDossierSection: (view: DossierViewId) => void
   onNavigateDossierFilter: (filter: DossierViewFilter) => void
 }
@@ -69,7 +107,7 @@ const viewContent: Record<ShellViewId, ViewMetadata> = {
     title: "Leads",
     description: "Hipoteses investigativas e proximas linhas de apuracao.",
     breadcrumbs: ["Desk Title", "Leads"],
-    commands: ["/create-lead"],
+    commands: ["deep-dive", "dig", "create-lead", "inquiry-all", "inquiry --lead <slug>"],
   },
   findings: {
     title: "Findings",
@@ -136,15 +174,49 @@ export function ViewerPanel({
   dossierIndexError,
   dossierIndexStale,
   selectedDossierDocument,
+  leadsIndex,
+  leadsIndexLoading,
+  leadsIndexError,
+  leadsIndexStale,
+  selectedLeadDocument,
+  investigationIndex,
+  investigationIndexLoading,
+  investigationIndexError,
+  investigationIndexStale,
+  selectedInvestigationDocument,
+  sourcesIndex,
+  sourcesIndexLoading,
+  sourcesIndexError,
+  sourcesIndexStale,
+  selectedSourceDocument,
   onOpenDossierDocument,
   onOpenDossierDocumentFromWikiLink,
+  onOpenSourceDocumentFromWikiLink,
+  onOpenLeadDocument,
+  onOpenLeadDocumentFromWikiLink,
+  onOpenFindingDocument,
+  onOpenFindingDocumentFromWikiLink,
+  onOpenAllegationDocument,
+  onOpenAllegationDocumentFromWikiLink,
+  onOpenInvestigationDocument,
+  onOpenSourceDocument,
+  onSelectCommand,
   onNavigateDossierSection,
   onNavigateDossierFilter,
 }: ViewerPanelProps): JSX.Element {
   const content = viewContent[activeView]
   const isDossierView = activeView === "dossier-people" || activeView === "dossier-groups" || activeView === "dossier-places" || activeView === "dossier-timeline"
+  const isLeadsView = activeView === "leads"
+  const isFindingsView = activeView === "findings"
+  const isAllegationsView = activeView === "allegations"
+  const isInvestigationView = isFindingsView || isAllegationsView
+  const isSourcesView = activeView === "sources"
+  const isGraphView = activeView === "graph-view"
   const isDocumentMode = isDossierView && Boolean(selectedDossierDocument)
-  const showTopCommands = !isDossierView
+  const isLeadDocumentMode = isLeadsView && Boolean(selectedLeadDocument)
+  const isInvestigationDocumentMode = isInvestigationView && Boolean(selectedInvestigationDocument)
+  const isSourceDocumentMode = isSourcesView && Boolean(selectedSourceDocument)
+  const showTopCommands = !isDossierView && content.commands.length > 0
   const dossierLookup = buildDossierLookup(dossierIndex)
   const selectedMeta = selectedDossierDocument ? dossierLookup.byRelativePath.get(selectedDossierDocument.relativePath) : undefined
 
@@ -245,10 +317,14 @@ export function ViewerPanel({
                 <HugeiconsIcon icon={ArrowDown01Icon} size={14} strokeWidth={1.8} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[28rem] max-w-[92vw] overflow-x-auto">
+            <DropdownMenuContent align="end" className="w-md max-w-[92vw] overflow-x-auto">
               {content.commands.length ? (
                 content.commands.map((command) => (
-                  <DropdownMenuItem key={command} className="whitespace-nowrap font-mono text-xs">
+                  <DropdownMenuItem
+                    key={command}
+                    className="whitespace-nowrap font-mono text-xs"
+                    onClick={() => onSelectCommand(command.startsWith("/") ? command : `/${command}`)}
+                  >
                     {command}
                   </DropdownMenuItem>
                 ))
@@ -261,23 +337,143 @@ export function ViewerPanel({
       </header>
 
       {isDocumentMode ? (
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
             {selectedDossierDocument ? (
               <DossierMarkdownDocumentPanel
                 selectedDocument={selectedDossierDocument}
                 dossierIndex={dossierIndex}
-                section={selectedMeta?.section}
+                sourcesIndex={sourcesIndex}
+                leadsIndex={leadsIndex}
+                investigationIndex={investigationIndex}
                 onOpenDocument={onOpenDossierDocumentFromWikiLink}
+                onOpenLeadDocument={onOpenLeadDocumentFromWikiLink}
+                onOpenFindingDocument={onOpenFindingDocumentFromWikiLink}
+                onOpenAllegationDocument={onOpenAllegationDocumentFromWikiLink}
+                onOpenSourceDocument={onOpenSourceDocumentFromWikiLink}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : isSourceDocumentMode ? (
+        <div className="flex min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+            {selectedSourceDocument ? (
+              <SourceMarkdownDocumentPanel
+                selectedDocument={selectedSourceDocument}
+                sourcesIndex={sourcesIndex}
+                dossierIndex={dossierIndex}
+                leadsIndex={leadsIndex}
+                investigationIndex={investigationIndex}
+                onOpenDossierDocument={onOpenDossierDocumentFromWikiLink}
+                onOpenLeadDocument={onOpenLeadDocumentFromWikiLink}
+                onOpenFindingDocument={onOpenFindingDocumentFromWikiLink}
+                onOpenAllegationDocument={onOpenAllegationDocumentFromWikiLink}
+                onOpenSourceDocument={onOpenSourceDocumentFromWikiLink}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : isLeadDocumentMode ? (
+        <div className="flex min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+            {selectedLeadDocument ? (
+              <LeadMarkdownDocumentPanel
+                selectedDocument={selectedLeadDocument}
+                leadsIndex={leadsIndex}
+                dossierIndex={dossierIndex}
+                investigationIndex={investigationIndex}
+                sourcesIndex={sourcesIndex}
+                onOpenDossierDocument={onOpenDossierDocumentFromWikiLink}
+                onOpenLeadDocument={onOpenLeadDocumentFromWikiLink}
+                onOpenFindingDocument={onOpenFindingDocumentFromWikiLink}
+                onOpenAllegationDocument={onOpenAllegationDocumentFromWikiLink}
+                onOpenSourceDocument={onOpenSourceDocumentFromWikiLink}
+                onOpenDocument={onOpenLeadDocument}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : isInvestigationDocumentMode ? (
+        <div className="flex min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
+            {selectedInvestigationDocument ? (
+              <InvestigationMarkdownDocumentPanel
+                selectedDocument={selectedInvestigationDocument}
+                dossierIndex={dossierIndex}
+                leadsIndex={leadsIndex}
+                sourcesIndex={sourcesIndex}
+                investigationIndex={investigationIndex}
+                onOpenDossierDocument={onOpenDossierDocumentFromWikiLink}
+                onOpenLeadDocument={onOpenLeadDocumentFromWikiLink}
+                onOpenSourceDocument={onOpenSourceDocumentFromWikiLink}
+                onOpenFindingDocument={onOpenFindingDocumentFromWikiLink}
+                onOpenAllegationDocument={onOpenAllegationDocumentFromWikiLink}
               />
             ) : null}
           </div>
         </div>
       ) : (
-        <ScrollArea className="flex-1">
-          {activeView === "sources" ? (
-            <SourceViewPanel />
-          ) : activeView === "dossier-people" ? (
+        activeView === "leads" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <LeadViewPanel
+              leadsIndex={leadsIndex}
+              leadsIndexLoading={leadsIndexLoading}
+              leadsIndexError={leadsIndexError}
+              leadsIndexStale={leadsIndexStale}
+              onOpenLeadDocument={onOpenLeadDocument}
+            />
+          </div>
+        ) : activeView === "findings" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <FindingViewPanel
+              investigationIndex={investigationIndex}
+              investigationIndexLoading={investigationIndexLoading}
+              investigationIndexError={investigationIndexError}
+              investigationIndexStale={investigationIndexStale}
+              onOpenFindingDocument={onOpenFindingDocument}
+            />
+          </div>
+        ) : activeView === "allegations" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <AllegationViewPanel
+              investigationIndex={investigationIndex}
+              investigationIndexLoading={investigationIndexLoading}
+              investigationIndexError={investigationIndexError}
+              investigationIndexStale={investigationIndexStale}
+              onOpenAllegationDocument={onOpenAllegationDocument}
+            />
+          </div>
+        ) : activeView === "sources" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <SourceViewPanel
+              sourcesIndex={sourcesIndex}
+              sourcesIndexLoading={sourcesIndexLoading}
+              sourcesIndexError={sourcesIndexError}
+              sourcesIndexStale={sourcesIndexStale}
+              onOpenSourceDocument={onOpenSourceDocument}
+            />
+          </div>
+        ) : isGraphView ? (
+          <div className="min-h-0 flex-1">
+            <GraphViewPanel
+              dossierIndex={dossierIndex}
+              leadsIndex={leadsIndex}
+              sourcesIndex={sourcesIndex}
+              investigationIndex={investigationIndex}
+              selectedDossierDocument={selectedDossierDocument}
+              selectedLeadDocument={selectedLeadDocument}
+              selectedSourceDocument={selectedSourceDocument}
+              selectedInvestigationDocument={selectedInvestigationDocument}
+              onOpenDossierDocument={onOpenDossierDocument}
+              onOpenLeadDocument={onOpenLeadDocument}
+              onOpenSourceDocument={onOpenSourceDocument}
+              onOpenInvestigationDocument={onOpenInvestigationDocument}
+            />
+          </div>
+        ) : (
+          <ScrollArea className="min-h-0 flex-1">
+            {activeView === "dossier-people" ? (
             <div className="mx-auto flex min-h-full w-full max-w-368 flex-col gap-4 px-6 py-6">
               <PeopleViewPanel dossierIndex={dossierIndex} onOpenDossierDocument={onOpenDossierDocument} />
             </div>
@@ -352,14 +548,36 @@ export function ViewerPanel({
                 </div>
               </section>
             </div>
-          )}
-        </ScrollArea>
+            )}
+          </ScrollArea>
+        )
       )}
       {isDossierView && (dossierIndexLoading || dossierIndexError || dossierIndexStale) ? (
         <footer className="flex shrink-0 items-center gap-2 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
           {dossierIndexLoading ? <span>Carregando indice do dossier...</span> : null}
           {dossierIndexError ? <span>Erro de indice: {dossierIndexError}</span> : null}
           {dossierIndexStale && !dossierIndexLoading ? <span>Atualizando dados do filesystem...</span> : null}
+        </footer>
+      ) : null}
+      {isSourcesView && (sourcesIndexLoading || sourcesIndexError || sourcesIndexStale) ? (
+        <footer className="flex shrink-0 items-center gap-2 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+          {sourcesIndexLoading ? <span>Loading sources index...</span> : null}
+          {sourcesIndexError ? <span>Index error: {sourcesIndexError}</span> : null}
+          {sourcesIndexStale && !sourcesIndexLoading ? <span>Refreshing sources data...</span> : null}
+        </footer>
+      ) : null}
+      {isLeadsView && (leadsIndexLoading || leadsIndexError || leadsIndexStale) ? (
+        <footer className="flex shrink-0 items-center gap-2 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+          {leadsIndexLoading ? <span>Loading leads index...</span> : null}
+          {leadsIndexError ? <span>Index error: {leadsIndexError}</span> : null}
+          {leadsIndexStale && !leadsIndexLoading ? <span>Refreshing leads data...</span> : null}
+        </footer>
+      ) : null}
+      {isInvestigationView && (investigationIndexLoading || investigationIndexError || investigationIndexStale) ? (
+        <footer className="flex shrink-0 items-center gap-2 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+          {investigationIndexLoading ? <span>Loading investigation index...</span> : null}
+          {investigationIndexError ? <span>Index error: {investigationIndexError}</span> : null}
+          {investigationIndexStale && !investigationIndexLoading ? <span>Refreshing investigation data...</span> : null}
         </footer>
       ) : null}
     </section>

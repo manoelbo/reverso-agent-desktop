@@ -1,4 +1,5 @@
 import { ipcMain, type BrowserWindow } from 'electron'
+import { mkdir } from 'node:fs/promises'
 import {
   WORKSPACE_MARKDOWN_CHANNELS,
   type DossierChangeEvent,
@@ -14,6 +15,8 @@ import { createDossierWatcher } from './dossier-watch'
 const WINDOW_EVENT_TARGET = WORKSPACE_MARKDOWN_CHANNELS.dossierChanged
 
 export async function registerDossierIpc(mainWindow: BrowserWindow): Promise<() => void> {
+  await mkdir(resolveDossierRootPath(), { recursive: true })
+
   ipcMain.handle(WORKSPACE_MARKDOWN_CHANNELS.listDossierIndex, async () => {
     try {
       return await buildDossierIndex()

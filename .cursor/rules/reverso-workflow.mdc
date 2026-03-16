@@ -22,6 +22,13 @@ plan-feature → busca-componentes → storybook-variations (UI relevante) → e
   - `pnpm typecheck` no escopo alterado
   - testes focados do fluxo alterado
   - smoke com prompts/comandos reais para fluxos conversacionais do agente
+- **quando houver mudança em `lab/agent-cli`**, é obrigatório executar o ciclo de release do CLI (README + help + release global)
+
+## Ambiente padrão de smoke real (`output_examples`)
+
+- Use `output_examples/` como ambiente padrão para smoke tests do `lab/agent-cli`.
+- É permitido apagar artefatos/outputs gerados para repetir testes.
+- Nunca deletar os PDFs originais em `output_examples/sources/`.
 
 ## Busca de componentes UI (obrigatório)
 
@@ -61,17 +68,19 @@ Usar o **shadcn MCP** no Cursor para busca por linguagem natural ou a CLI (`pnpm
 - **/post-commit-tests** — Gera/atualiza testes após commit; atualiza `.agents/test-registry.md`.
 - **/run-tests [all\|last]** — Roda suíte completa ou só testes do último commit no registro.
 
-## Agent Lab (fluxo atual)
+## Agent CLI (foco atual)
 
 - Superfície conversacional:
+  - ChatPanel command-driven (Electron) usa o `lab/agent-cli` como backend de execução
   - `pnpm reverso agent --text|--prompt "..."`
   - `pnpm reverso --text|--prompt "..."`
 - Fluxo investigativo principal:
   - `init -> deep-dive (alias legado: dig) -> deep-dive-next -> create-lead -> inquiry`
-- Em mudanças do `lab/agent`, priorizar validação de:
+- Em mudanças do `lab/agent-cli`, priorizar validação de:
   - roteamento stateful
   - continuidade de sessão
   - comportamento em linguagem natural para plan/execute
+  - paridade de documentação (`README`) e saída de ajuda (`--help`)
 
 ## Teste visual com Electron (CDP)
 

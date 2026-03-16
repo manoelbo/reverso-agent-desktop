@@ -1,0 +1,42 @@
+{
+  "name": "@reverso-agent/cli",
+  "version": "0.3.7",
+  "description": "CLI do agente investigativo Reverso — OSINT com LLM",
+  "type": "module",
+  "bin": {
+    "reverso": "bin/reverso.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepare": "pnpm build",
+    "prepublishOnly": "pnpm typecheck",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "dev": "node ../../node_modules/tsx/dist/cli.mjs src/index.ts",
+    "check:readme-help": "node ./scripts/release-cycle.mjs --check",
+    "release:publish-global": "node ./scripts/release-cycle.mjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.96",
+    "dotenv": "^17.3.1",
+    "p-limit": "^7.3.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/yargs": "^17.0.33",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  }
+}

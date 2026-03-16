@@ -8,7 +8,7 @@ export type EventBlock = {
   body: string
 }
 
-const EVENT_BLOCK_REGEX = /:::event\s*\n([\s\S]*?)\n::::/g
+const EVENT_BLOCK_REGEX = /:::event\s*\n([\s\S]*?)\n:::/g
 const META_SEPARATOR = "\n---\n"
 const WIKILINK_REGEX = /\[\[([^\]]+)\]\]/g
 
@@ -53,25 +53,70 @@ function parseMetadata(raw: string): Omit<EventBlock, "body" | "actors"> & { act
   return metadata
 }
 
+const EVENT_TYPE_CLASSES: Record<string, string> = {
+  contract: "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  legal: "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  allegation: "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  finding: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  transfer: "border-violet-500/25 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  other: "border-border/60 bg-muted/60 text-muted-foreground",
+}
+
+function eventTypeBadgeClass(type?: string): string {
+  const key = (type ?? "other").toLowerCase()
+  return EVENT_TYPE_CLASSES[key] ?? EVENT_TYPE_CLASSES.other
+}
+
 function buildEventHtml(event: EventBlock): string {
-  const actorsHtml = event.actors
-    .map((actor) => `<span class="reverso-event-actor">[[${escapeHtml(actor)}]]</span>`)
-    .join("")
+  const badgeClass = eventTypeBadgeClass(event.type)
+  const typeLabel = event.type ?? "other"
+
+  const headerRight = event.source
+    ? [
+        `<div class="reverso-event-source ml-auto flex items-center gap-1 text-[11px] text-muted-foreground/70 tabular-nums">`,
+        `<span>${escapeHtml(event.source)}</span>`,
+        event.page ? `<span aria-hidden="true">·</span><span>p.&thinsp;${escapeHtml(event.page)}</span>` : "",
+        `</div>`,
+      ].join("")
+    : ""
+
+  const actorsHtml = event.actors.length > 0
+    ? [
+        `<div class="reverso-event-meta flex flex-wrap items-center gap-1.5 border-b border-border/40 px-4 py-2">`,
+        `<span class="reverso-event-meta-label mr-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Actors</span>`,
+        ...event.actors.map(
+          (actor) =>
+            `<span class="reverso-event-actor inline-flex items-center rounded-md border border-border/50 bg-background px-2 py-0.5 text-xs text-foreground/80">${escapeHtml(actor)}</span>`
+        ),
+        `</div>`,
+      ].join("")
+    : ""
+
+  const followsHtml = event.follows
+    ? [
+        `<div class="reverso-event-follows flex items-center gap-1.5 border-b border-border/40 px-4 py-2 text-[11px] text-muted-foreground">`,
+        `<span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">Follows</span>`,
+        `<span>${escapeHtml(event.follows)}</span>`,
+        `</div>`,
+      ].join("")
+    : ""
+
+  const bodyHtml = event.body
+    ? `<div class="reverso-event-body px-4 py-3 text-sm leading-relaxed">${event.body}</div>`
+    : ""
 
   return [
-    `<article class="reverso-event" data-event-type="${escapeHtml(event.type ?? "other")}">`,
-    `<header class="reverso-event-header">`,
-    event.date ? `<span class="reverso-event-date">${escapeHtml(event.date)}</span>` : "",
-    event.type ? `<span class="reverso-event-badge">${escapeHtml(event.type)}</span>` : "",
-    `</header>`,
-    `<div class="reverso-event-meta">`,
-    actorsHtml ? `<div class="reverso-event-meta-row"><strong>Actors:</strong> ${actorsHtml}</div>` : "",
-    event.source
-      ? `<div class="reverso-event-meta-row"><strong>Source:</strong> ${escapeHtml(event.source)}${event.page ? ` (p. ${escapeHtml(event.page)})` : ""}</div>`
+    `<article class="reverso-event overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10" data-event-type="${escapeHtml(typeLabel)}">`,
+    `<header class="reverso-event-header flex items-center gap-2 border-b border-border/50 bg-muted/20 px-4 py-2.5">`,
+    event.date
+      ? `<time class="reverso-event-date text-sm font-semibold tabular-nums text-foreground/90">${escapeHtml(event.date)}</time>`
       : "",
-    event.follows ? `<div class="reverso-event-meta-row"><strong>Follows:</strong> ${escapeHtml(event.follows)}</div>` : "",
-    `</div>`,
-    `<div class="reverso-event-body">${event.body}</div>`,
+    `<span class="reverso-event-badge inline-flex h-5 items-center rounded-full border px-2.5 text-[11px] font-medium ${badgeClass}">${escapeHtml(typeLabel)}</span>`,
+    headerRight,
+    `</header>`,
+    actorsHtml,
+    followsHtml,
+    bodyHtml,
     `</article>`,
   ].join("")
 }

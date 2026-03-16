@@ -75,7 +75,7 @@ source: documento_anexado.pdf
 page: 3
 ---
 Pedro Martin Fernandes, Diretor de Obras de Drenagem Urbana, assina eletronicamente o documento.
-::::
+:::
 
 :::event
 date: 2021-05-26
@@ -85,7 +85,7 @@ source: documento_anexado.pdf
 page: 18
 ---
 Certidão de inexistência de registros no CADIN para a empresa.
-::::
+:::
 `
 
 export const investigationMarkdownExample = `---

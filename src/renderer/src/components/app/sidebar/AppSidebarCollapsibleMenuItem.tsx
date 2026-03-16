@@ -6,6 +6,7 @@ import { ArrowDown01Icon, ArrowRight01Icon, Folder01Icon } from "@hugeicons/core
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { DossierSection, DossierSidebarFile, DossierViewFilter, ShellViewId, SidebarTreeNode } from "@/components/app/sidebar/types"
 
 type AppSidebarCollapsibleMenuItemProps = {
@@ -24,15 +25,37 @@ type SidebarTreeNodeProps = {
   onOpenDossierDocument: (relativePath: string) => void
 }
 
+function SidebarFileButton({
+  file,
+  onOpenDossierDocument,
+}: {
+  file: DossierSidebarFile
+  onOpenDossierDocument: (relativePath: string) => void
+}): JSX.Element {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="w-full py-0 text-left" onClick={() => onOpenDossierDocument(file.relativePath)}>
+          <span className="truncate">{file.name}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right" align="start" className="max-w-[360px] wrap-break-word text-xs">
+        <div className="space-y-1">
+          <p className="font-medium">{file.title ?? file.name}</p>
+          {file.fileName ? <p className="font-mono text-[11px] text-muted-foreground">{file.fileName}</p> : null}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 function SidebarFilesList({ files, onOpenDossierDocument }: { files: DossierSidebarFile[]; onOpenDossierDocument: (relativePath: string) => void }): JSX.Element {
   return (
     <SidebarMenuSub className="gap-0 py-0">
       {files.map((file) => (
         <SidebarMenuSubItem key={file.relativePath}>
           <SidebarMenuSubButton asChild className="h-6 w-full min-w-0 text-xs">
-            <button type="button" className="w-full text-left py-0" onClick={() => onOpenDossierDocument(file.relativePath)}>
-              <span className="truncate">{file.name}</span>
-            </button>
+            <SidebarFileButton file={file} onOpenDossierDocument={onOpenDossierDocument} />
           </SidebarMenuSubButton>
         </SidebarMenuSubItem>
       ))}
@@ -111,9 +134,7 @@ function SidebarTreeBranch({ sectionId, node, path, onSelectDossierFilter, onOpe
             {node.files?.map((file) => (
               <SidebarMenuSubItem key={file.relativePath}>
                 <SidebarMenuSubButton asChild className="h-6 w-full min-w-0 text-xs">
-                  <button type="button" className="w-full text-left py-0" onClick={() => onOpenDossierDocument(file.relativePath)}>
-                    <span className="truncate">{file.name}</span>
-                  </button>
+                  <SidebarFileButton file={file} onOpenDossierDocument={onOpenDossierDocument} />
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             ))}
@@ -137,44 +158,46 @@ export function AppSidebarCollapsibleMenuItem({
   }
 
   return (
-    <Collapsible defaultOpen={section.id === "dossier-people"} className="group/collapsible">
-      <SidebarMenuItem>
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton type="button" isActive={activeView === section.id} onClick={() => onSelectView(section.id)}>
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              size={14}
-              strokeWidth={1.8}
-              className="shrink-0 transition-transform group-data-[state=open]/collapsible:hidden"
-            />
-            <HugeiconsIcon
-              icon={ArrowDown01Icon}
-              size={14}
-              strokeWidth={1.8}
-              className="hidden shrink-0 transition-transform group-data-[state=open]/collapsible:block"
-            />
-            <HugeiconsIcon icon={Folder01Icon} size={16} strokeWidth={1.8} />
-            <span className="min-w-0 flex-1 truncate">{section.label}</span>
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          {section.files ? <SidebarFilesList files={section.files} onOpenDossierDocument={handleOpenDossierDocument} /> : null}
-          {section.subfolders ? (
-            <SidebarMenuSub className="gap-0 py-0">
-              {section.subfolders.map((folder) => (
-                <SidebarTreeBranch
-                  key={folder.name}
-                  sectionId={section.id}
-                  node={folder}
-                  path={[]}
-                  onSelectDossierFilter={onSelectDossierFilter}
-                  onOpenDossierDocument={handleOpenDossierDocument}
-                />
-              ))}
-            </SidebarMenuSub>
-          ) : null}
-        </CollapsibleContent>
-      </SidebarMenuItem>
-    </Collapsible>
+    <TooltipProvider delayDuration={300}>
+      <Collapsible defaultOpen={section.id === "dossier-people"} className="group/collapsible">
+        <SidebarMenuItem>
+          <CollapsibleTrigger asChild>
+            <SidebarMenuButton type="button" isActive={activeView === section.id} onClick={() => onSelectView(section.id)}>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={14}
+                strokeWidth={1.8}
+                className="shrink-0 transition-transform group-data-[state=open]/collapsible:hidden"
+              />
+              <HugeiconsIcon
+                icon={ArrowDown01Icon}
+                size={14}
+                strokeWidth={1.8}
+                className="hidden shrink-0 transition-transform group-data-[state=open]/collapsible:block"
+              />
+              <HugeiconsIcon icon={Folder01Icon} size={16} strokeWidth={1.8} />
+              <span className="min-w-0 flex-1 truncate">{section.label}</span>
+            </SidebarMenuButton>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            {section.files ? <SidebarFilesList files={section.files} onOpenDossierDocument={handleOpenDossierDocument} /> : null}
+            {section.subfolders ? (
+              <SidebarMenuSub className="gap-0 py-0">
+                {section.subfolders.map((folder) => (
+                  <SidebarTreeBranch
+                    key={folder.name}
+                    sectionId={section.id}
+                    node={folder}
+                    path={[]}
+                    onSelectDossierFilter={onSelectDossierFilter}
+                    onOpenDossierDocument={handleOpenDossierDocument}
+                  />
+                ))}
+              </SidebarMenuSub>
+            ) : null}
+          </CollapsibleContent>
+        </SidebarMenuItem>
+      </Collapsible>
+    </TooltipProvider>
   )
 }

@@ -57,6 +57,9 @@ function sectionFromPath(relativePath: string): string {
   if (relativePath.startsWith("groups/")) return "Groups"
   if (relativePath.startsWith("places/")) return "Places"
   if (relativePath.startsWith("timeline/")) return "Timeline"
+  if (relativePath.startsWith("leads/")) return "Leads"
+  if (relativePath.startsWith("findings/")) return "Findings"
+  if (relativePath.startsWith("allegations/")) return "Allegations"
   return "Dossier"
 }
 
@@ -85,11 +88,32 @@ type AccentConfig = {
   icon: string
 }
 
+// Uma cor por tipo de seção: header (gradiente/borda), badge e ícone usam a mesma cor do sidebar
 const accentConfigs: Record<string, AccentConfig> = {
   dossier: {
     header: "bg-gradient-to-r from-indigo-500/12 to-transparent border-b border-indigo-500/20",
     badge: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30",
     icon: "text-indigo-500",
+  },
+  groups: {
+    header: "bg-gradient-to-r from-sky-500/12 to-transparent border-b border-sky-500/20",
+    badge: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+    icon: "text-sky-500",
+  },
+  people: {
+    header: "bg-gradient-to-r from-indigo-500/12 to-transparent border-b border-indigo-500/20",
+    badge: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30",
+    icon: "text-indigo-500",
+  },
+  places: {
+    header: "bg-gradient-to-r from-emerald-500/12 to-transparent border-b border-emerald-500/20",
+    badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+    icon: "text-emerald-500",
+  },
+  timeline: {
+    header: "bg-gradient-to-r from-amber-500/12 to-transparent border-b border-amber-500/20",
+    badge: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+    icon: "text-amber-500",
   },
   investigation: {
     header: "bg-gradient-to-r from-amber-500/12 to-transparent border-b border-amber-500/20",
@@ -100,6 +124,26 @@ const accentConfigs: Record<string, AccentConfig> = {
     header: "bg-gradient-to-r from-emerald-500/12 to-transparent border-b border-emerald-500/20",
     badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
     icon: "text-emerald-500",
+  },
+  sources: {
+    header: "bg-gradient-to-r from-rose-500/12 to-transparent border-b border-rose-500/20",
+    badge: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
+    icon: "text-rose-500",
+  },
+  leads: {
+    header: "bg-gradient-to-r from-violet-500/12 to-transparent border-b border-violet-500/20",
+    badge: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30",
+    icon: "text-violet-500",
+  },
+  findings: {
+    header: "bg-gradient-to-r from-teal-500/12 to-transparent border-b border-teal-500/20",
+    badge: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30",
+    icon: "text-teal-500",
+  },
+  allegations: {
+    header: "bg-gradient-to-r from-red-500/12 to-transparent border-b border-red-500/20",
+    badge: "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30",
+    icon: "text-red-500",
   },
 }
 
@@ -118,7 +162,8 @@ function EditorialDossierTemplate({ content, relativePath, variationId, onNaviga
   const title = useMemo(() => extractTitle(content, fm), [content, fm])
   const section = useMemo(() => sectionFromPath(relativePath), [relativePath])
   const icon = getSectionIcon(section)
-  const accent = accentConfigs[variationId] ?? accentConfigs.dossier
+  const sectionLower = section.toLowerCase()
+  const accent = accentConfigs[sectionLower] ?? accentConfigs[variationId] ?? accentConfigs.dossier
   const mdVariant = mdVariantByAccent[variationId] ?? "editorial"
 
   const allMetaFields = useMemo(

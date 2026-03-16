@@ -8,8 +8,7 @@ import type {
   DossierSectionKey,
   DossierTreeNode,
 } from '../../shared/workspace-markdown'
-
-const DOSSIER_ROOT_CANDIDATE = path.join('lab', 'agent', 'filesystem', 'dossier')
+import { resolveSourcesRootPath } from './source-index'
 
 const DOSSIER_SECTIONS: Record<DossierSectionKey, { label: string; relativeRoot: string }> = {
   people: { label: 'People', relativeRoot: 'people' },
@@ -49,7 +48,11 @@ function resolveWorkspaceRoot(): string {
 
 export function resolveDossierRootPath(): string {
   const workspaceRoot = resolveWorkspaceRoot()
-  return path.resolve(workspaceRoot, DOSSIER_ROOT_CANDIDATE)
+  const filesystemRoot = path.dirname(resolveSourcesRootPath())
+  if (filesystemRoot) {
+    return path.resolve(filesystemRoot, 'dossier')
+  }
+  return path.resolve(workspaceRoot, 'dossier')
 }
 
 function getSectionFromRelativePath(relativePath: string): DossierSectionKey {
