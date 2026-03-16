@@ -72,11 +72,19 @@ AGENT_LAB_MODEL=google/gemini-2.5-flash
 
 ## OpenRouter setup (step by step)
 
-1. Create an account at [OpenRouter](https://openrouter.ai/).
-2. Open your API keys page and generate a new key.
-3. Copy the key.
-4. Paste it into `.env.local` as `OPENROUTER_API_KEY`.
-5. Save the file.
+1. Go to [OpenRouter](https://openrouter.ai/).
+2. Click **Sign up** (top-right) and create your account (Google/GitHub/email).
+3. After login, open **Keys** (direct link: [openrouter.ai/keys](https://openrouter.ai/keys)).
+4. Click **Create key** (or **New API Key**) and give it a name like `reverso-local`.
+5. Copy the generated key immediately (you may not be able to see it again in full).
+6. In your project root, open `.env.local` and set:
+
+```bash
+OPENROUTER_API_KEY=sk-or-v1-...
+```
+
+7. Save the file.
+8. Optional but recommended: on OpenRouter, confirm your account has available credits/quota.
 
 Quick validation command:
 
@@ -84,7 +92,7 @@ Quick validation command:
 pnpm reverso --help
 ```
 
-If this command runs without an env/key error, your setup is ready.
+If this command runs without env/key errors, your setup is ready.
 
 ## Run the desktop app
 

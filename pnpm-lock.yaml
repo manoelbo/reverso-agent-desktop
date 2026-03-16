@@ -212,6 +212,12 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  lab/agent-gui:
+    dependencies:
+      p-limit:
+        specifier: ^7.3.0
+        version: 7.3.0
+
 packages:
 
   7zip-bin@5.2.0:
