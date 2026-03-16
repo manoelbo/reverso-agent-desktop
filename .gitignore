@@ -21,7 +21,9 @@ lab/agent/filesystem/*
 
 # Limpeza para repositório público (mantidos localmente)
 .agents/
+.claude/
 .cursor/
+.vscode/
 AGENTS.md
 
 # Artefatos e laboratórios não publicados
