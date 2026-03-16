@@ -18,3 +18,30 @@ lab/agent/filesystem/*
 #!lab/agent/filesystem/source/*
 #!lab/agent/filesystem/source/*.pdf
 #!lab/agent/filesystem/source/README.md
+
+# Limpeza para repositório público (mantidos localmente)
+.agents/
+.cursor/
+AGENTS.md
+
+# Artefatos e laboratórios não publicados
+output_examples/
+lab/storybook/
+
+# Imagens de protótipo/teste (não essenciais ao runtime)
+chatpanel-zero-*.png
+storybook-variant-*.png
+
+# Workspace runtime (base reset versionada apenas com placeholders)
+sources/**
+dossier/**
+investigation/**
+events/**
+reports/**
+sessions/**
+!sources/.gitkeep
+!dossier/.gitkeep
+!investigation/.gitkeep
+!events/.gitkeep
+!reports/.gitkeep
+!sessions/.gitkeep
