@@ -51,3 +51,11 @@ lab/agent-gui/filesystem/**
 lab/agent-gui/filesystem_test/**
 !lab/agent-gui/filesystem/.gitkeep
 !lab/agent-gui/filesystem_test/.gitkeep
+
+# Artefatos locais do agent-cli (não publicar)
+lab/agent-cli/*.tgz
+lab/agent-cli/.claude/settings.local.json
+
+# Estado local de aprendizagem contínua
+.cursor/hooks/state/continual-learning.json
+.cursor/hooks/state/continual-learning-index.json
